@@ -26,6 +26,7 @@ public:
   int q;
   int dd;
   int n_blocks;
+  int npars;
   
   // data
   arma::mat y;
@@ -277,6 +278,12 @@ MeshGPsvc::MeshGPsvc(
   q  = Z.n_cols;
   dd = coords.n_cols;
   
+  if((q==1) & (dd==2)){
+    npars = 1;
+  } else {
+    npars = 5;
+  }
+  
   printf("%d observed locations, %d to predict, %d total\n",
          n, y.n_elem-n, y.n_elem);
   
@@ -402,8 +409,6 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   gibbs_caching      = Rcpp::as<arma::vec>(Rcpp::wrap(model_caching["gibbs_caching"]));
   gibbs_caching_ix   = Rcpp::as<arma::vec>(Rcpp::wrap(model_caching["gibbs_caching_ix"]));
   
-  fill_zeros_Kcache();
-  
   printf("6 ");
   w                = Rcpp::as<arma::mat>(Rcpp::wrap(model_params["w"]));
   Bcoeff           = Rcpp::as<arma::vec>(Rcpp::wrap(model_params["Bcoeff"]));
@@ -420,7 +425,6 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   debug        = Rcpp::as<bool>(Rcpp::wrap(model_settings["debug"]));
   predicting   = true;
   
-  printf("8 ");
   n                   = na_ix_all.n_elem;
   p                   = X.n_cols;
   q                   = Z.n_cols;
@@ -432,6 +436,16 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   Vi                  = .01 * arma::eye(p,p);
   bprim               = arma::zeros(p);
   Vim                 = Vi * bprim;
+  
+  printf("8 ");
+  
+  if((q==1) & (dd==2)){
+    npars = 1;
+  } else {
+    npars = 5;
+  }
+  
+  fill_zeros_Kcache();
   
   // Zblock
   Zblock = arma::field<arma::sp_mat> (n_blocks);
@@ -807,12 +821,15 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   arma::field<arma::mat> K_cholcp_cache(kr_caching.n_elem);
   //arma::field<arma::mat> Kcp_cache(kr_caching.n_elem);
   arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
-  int k = Kparam.n_elem - 6; // number of cross-distances = p(p-1)/2
+  int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
   
-  arma::vec cparams = Kparam.subvec(0, 5);
+  //Rcpp::Rcout << Kparam << endl;
+  //Rcpp::Rcout << "npars: " << npars << endl;
+  
+  arma::vec cparams = Kparam.subvec(0, npars);
   arma::mat Dmat;
   if(k>0){
-    Dmat = vec_to_symmat(Kparam.subvec(6, 5+k));
+    Dmat = vec_to_symmat(Kparam.subvec(npars, npars+k));
   } else {
     Dmat = arma::zeros(1,1);
   }
@@ -940,11 +957,11 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
   message("[get_cond_comps_loglik_w_nocache] start. ");
   
   arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
-  int k = Kparam.n_elem - 6; // number of cross-distances = p(p-1)/2
-  arma::vec cparams = Kparam.subvec(0, 5);
+  int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
+  arma::vec cparams = Kparam.subvec(0, npars);
   arma::mat Dmat;
   if(k>0){
-    Dmat = vec_to_symmat(Kparam.subvec(6, 5+k));
+    Dmat = vec_to_symmat(Kparam.subvec(npars+1, npars+k));
   } else {
     Dmat = arma::zeros(1,1);
   }

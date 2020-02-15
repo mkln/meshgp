@@ -114,6 +114,7 @@ Rcpp::List qmeshgp_svc_mcmc(
     bool sample_theta=true,
     bool sample_w=true){
   
+  Rcpp::Rcout << "Preparing for MCMC." << endl;
   omp_set_num_threads(num_threads);
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -127,22 +128,41 @@ Rcpp::List qmeshgp_svc_mcmc(
   std::chrono::steady_clock::time_point tick_mcmc = std::chrono::steady_clock::now();
   
   bool verbose_mcmc = printall;
+  
+  int n = coords.n_rows;
   int d = coords.n_cols;
   int q = Z.n_cols;
-  int k = q * (q-1)/2;
-  int npars = 5 + k; // 5 for huv nonsep + cross (excludes sigmasq)
   
+  int k;
+  int npars;
+  double dlim=0;
+  Rcpp::Rcout << "d=" << d << " q=" << q << ".\n";
   arma::mat set_unif_bounds = set_unif_bounds_in;
+  
+  if((d == 2) & (q == 1)) {
+    npars = 1;
+  } else {
+    k = q * (q-1)/2;
+    npars = 5 + k; // 5 for xCovHUV + Dmat for variables (excludes sigmasq)
+    dlim = sqrt(.0+q);
+  } 
   
   if(q > 1){
     arma::mat vbounds = arma::zeros(k, 2);
     vbounds.col(0) += 1e-5;
-    vbounds.col(1) = 2 - 1e-5;
+    vbounds.col(1) += dlim - 1e-5;
     set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
   }
+  /*
+  arma::vec active_pars = arma::ones(npars);
+  arma::mat active_pars_mat = arma::ones(npars, npars);
+  if((d == 2) & (q == 1)){
+    active_pars.subvec(1, active_pars.n_elem-1).fill(0);
+    active_pars_mat = active_pars_mat % (active_pars * active_pars.t());
+  }
+  */
   
   MeshGPsvc mesh = MeshGPsvc();
-  
   bool recover_mesh = recover.length() > 0;
   if(recover_mesh){
     mesh = MeshGPsvc(y, X, Z, coords, blocking, recover);
@@ -164,6 +184,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   arma::mat theta_mcmc = arma::zeros(npars, mcmc_keep);
   arma::vec llsave = arma::zeros(mcmc_keep);
   
+  // field avoids limit in size of objects -- ideally this should be a cube
   arma::field<arma::mat> w_mcmc(mcmc_keep);
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
@@ -270,7 +291,8 @@ Rcpp::List qmeshgp_svc_mcmc(
         
         // theta
         arma::vec new_param = param;
-        new_param = par_huvtransf_back(par_huvtransf_fwd(param) + paramsd * arma::randn(npars));
+        new_param = par_huvtransf_back(par_huvtransf_fwd(param, npars, dlim) + 
+          paramsd * arma::randn(npars), npars, dlim);
         
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         
@@ -290,7 +312,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         //lognormal_logdens(new_param(1), 0, 1) - lognormal_logdens(param(1), 0, 1) + //phi
         //gamma_logdens(new_param(npars-1), a, b) - gamma_logdens(param(npars-1), a, b);  // tausq_inv
       
-        double jacobian = calc_jacobian(d, q, k, new_param, param);
+        double jacobian = calc_jacobian(k, new_param, param, npars);
         logaccept = new_loglik - current_loglik + jacobian;
   
         bool accepted = do_I_accept(logaccept);
@@ -324,7 +346,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         accept_ratio_local = accept_count_local/propos_count_local;
         
         if(adapting){
-          adapt(par_huvtransf_fwd(param), sumparam, prodparam, paramsd, sd_param, m, accept_ratio); // **
+          adapt(par_huvtransf_fwd(param, npars, dlim), sumparam, prodparam, paramsd, sd_param, m, accept_ratio); // **
         }
         
         if((m>0) & (mcmc > 100) & !printall){

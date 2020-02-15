@@ -9,10 +9,9 @@ github_token <- "2be6ec16fcad254251bac09c231bfdf8009f4b43"
 #devtools::install_github("mkln/meshgp", auth_token=github_token)
 library(meshgp)
 
-
 set.seed(ss <- 1)
 
-simdata <- F
+simdata <- T
 if(simdata){
   #load("data/AllSimulatedTemps.RData")
   load(url("https://github.com/finnlindgren/heatoncomparison/raw/master/Data/AllSimulatedTemps.RData"))
@@ -40,24 +39,27 @@ coords <- simdf %>% select(Var1, Var2) %>% as.matrix() %>%
 
 nr <- nrow(coords)
 X <- coords#matrix(1, nrow=nr) 
+Z <- matrix(1, nrow=nr) 
 ybar <- mean(simdf$y, na.rm=T)
 y <- simdf$y - ybar
 
-mcmc_keep <- 1000
-mcmc_burn <- 1000
+mcmc_keep <- 100
+mcmc_burn <- 100
 mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
 mesh_settings <- list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=T, 
-                      reference_full_coverage=F, verbose=T, debug=F, printall=T, seed=NULL)
+                      reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=NULL)
 mesh_starting <- list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
 
 
 # MESH
-Mv <- c(50,30)#c(25,15) # 
+Mv <- c(50,60)#c(25,15) # 
+(nr / prod(Mv) * ncol(Z))
+
 set.seed(1)
 mesh_time <- system.time({
-  meshout <- meshgp(y, X, coords, Mv=Mv, 
+  meshout <- meshgp_svc(y, X, Z, coords, Mv=Mv, 
                     mcmc = mesh_mcmc,
                     num_threads = 11,
                     settings    = mesh_settings,
@@ -80,15 +82,14 @@ yhat_mcmc <- meshout$yhat_mcmc
 (theta_est <- theta_mcmc %>% apply(1, mean))
 
 meshgp_df <- meshout$coords %>% 
-  cbind(w_mcmc %>% apply(1, mean),
-        yhat_mcmc %>% apply(1, mean)
-  ) %>%
+  cbind(w_mcmc    %>% list_mean(),
+        yhat_mcmc %>% list_mean()) %>%
   as.data.frame() %>% 
-  arrange(V1, V2) %>% 
-  rename(Var1 = V1, Var2 = V2, w_meshgp = V3, y_meshgp = V4) %>% 
+  arrange(Var1, Var2) %>% 
+  rename(w_meshgp = V3, y_meshgp = V4) %>% 
   mutate(y_meshgp = y_meshgp + ybar) %>%
   mutate(y_meshgp_low = y_meshgp %>% quantile(.025),
-         y_meshgp_hi = y_meshgp %>% quantile(.975))
+         y_meshgp_hi  = y_meshgp %>% quantile(.975))
 
 model_compare <- coords %>% cbind(simdf$y_full, y) %>% as.data.frame() %>%
   rename(y_full = V3) %>% left_join(meshgp_df) %>%

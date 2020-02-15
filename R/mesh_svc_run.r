@@ -1,4 +1,4 @@
-meshgp_svc <- function(y, X, Z, coords, Mv, 
+meshgp <- function(y, X, Z, coords, Mv, 
                    mcmc        = list(keep=1000, burn=0, thin=1),
                    num_threads = 7,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
@@ -67,6 +67,7 @@ meshgp_svc <- function(y, X, Z, coords, Mv,
     p              <- ncol(X)
     q              <- ncol(Z)
     nr             <- nrow(X)
+    space_uni      <- (q==1) & (dd==2)
     
     if(length(Mv) == 1){
       Mv <- rep(Mv, dd)
@@ -80,7 +81,7 @@ meshgp_svc <- function(y, X, Z, coords, Mv,
     }
     
     if(is.null(starting$theta)){
-      if(dd == 2){
+      if(space_uni){
         start_theta <- 10
       } else {
         start_theta <- rep(1, 5 + q * (q-1)/2) # excluding sigmasq
@@ -139,16 +140,21 @@ meshgp_svc <- function(y, X, Z, coords, Mv,
   colnames(coords)  <- paste0('Var', 1:dd)
   
   na_which <- ifelse(!is.na(y), 1, NA)
-  simdata <- coords %>% cbind(y) %>% cbind(na_which) %>% cbind(X) %>% cbind(Z) %>% as.data.frame()
+  simdata <- 1:nrow(coords) %>% cbind(coords) %>% 
+    cbind(y) %>% cbind(na_which) %>% 
+    cbind(X) %>% cbind(Z) %>% as.data.frame()
+  colnames(simdata)[1] <- "ix"
   if(dd == 2){
     simdata %<>% arrange(Var1, Var2)
     coords <- simdata %>% select(Var1, Var2)
-    colnames(simdata)[3:4] <- c("y", "na_which")
+    colnames(simdata)[4:5] <- c("y", "na_which")
   } else {
     simdata %<>% arrange(Var1, Var2, Var3)
     coords <- simdata %>% select(Var1, Var2, Var3)
-    colnames(simdata)[4:5] <- c("y", "na_which")
+    colnames(simdata)[5:6] <- c("y", "na_which")
   }
+  
+  sort_ix     <- simdata$ix
   
   y           <- simdata$y %>% matrix(ncol=1)
   X           <- simdata %>% select(contains("X_")) %>% as.matrix()
@@ -250,7 +256,7 @@ meshgp_svc <- function(y, X, Z, coords, Mv,
                 seed      = seeded, 
                 runtime_all   = comp_time,
                 runtime_mcmc  = mcmc_time,
-                
+                sort_ix      = sort_ix,
                 paramsd   = paramsd,
                 recover   = recover
                 ))

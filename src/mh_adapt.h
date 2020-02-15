@@ -93,7 +93,11 @@ inline arma::vec par_transf_back(arma::vec par){
   }
 }
 
-inline arma::vec par_huvtransf_fwd(arma::vec par, double l=2){
+inline arma::vec par_huvtransf_fwd(arma::vec par, int npars, double l=2){
+  if(npars == 1){
+    par(0) = log(par(0));
+    return par;
+  } else {
     // apanasovich&genton huv nonsep 
     par(0) = log(par(0));
     par(1) = logit(par(1));
@@ -105,10 +109,15 @@ inline arma::vec par_huvtransf_fwd(arma::vec par, double l=2){
       par(j) = logit(par(j), l);
     }
     return par;
+  }
 }
 
 
-inline arma::vec par_huvtransf_back(arma::vec par, double l=2){
+inline arma::vec par_huvtransf_back(arma::vec par, int npars, double l=2){
+  if(npars == 1){
+    par(0) = exp(par(0));
+    return par;
+  } else {
     // apanasovich&genton huv nonsep 
     par(0) = exp(par(0));
     par(1) = logistic(par(1));
@@ -120,6 +129,7 @@ inline arma::vec par_huvtransf_back(arma::vec par, double l=2){
       par(j) = logistic(par(j), l);
     }
     return par;
+  }
 }
 
 
@@ -149,21 +159,24 @@ inline double normal_proposal_logitscale(const double& xnew, const double& xold,
   return log(xnew * (l-xnew)) - log(xold * (l-xold));
 }
 
-inline double calc_jacobian(int d, int q, int k, const arma::vec& new_param, const arma::vec& param){
+inline double calc_jacobian(int k, const arma::vec& new_param, 
+                            const arma::vec& param, int npars){
   
-  double norm_prop_logitbound_varsim = 0;
-  for(int vj=0; vj<k; vj++){
-    norm_prop_logitbound_varsim += normal_proposal_logitscale(new_param(5+vj), param(5+vj), 2);
-  }
-  
-  if(d == 2){
+  if(npars == 1){
     return lognormal_proposal_logscale(new_param(0), param(0));
   } else {
-    return lognormal_proposal_logscale(new_param(4), param(4)) + // phi1 par
-      lognormal_proposal_logscale(new_param(0), param(0)) + // psi1 par-1
-      normal_proposal_logitscale(new_param(1), param(1)) + // psi1 par-2
-      lognormal_proposal_logscale(new_param(2), param(2)) + // psi1 par-1
-      normal_proposal_logitscale(new_param(3), param(3)) + // psi1 par-2
+    double norm_prop_logitbound_varsim = 0;
+    for(int vj=0; vj<k; vj++){
+      norm_prop_logitbound_varsim += normal_proposal_logitscale(new_param(5+vj), param(5+vj), 2);
+    }
+    
+    double par1   = lognormal_proposal_logscale(new_param(0), param(0)); // 
+    double nnsep1 = normal_proposal_logitscale(new_param(1), param(1)); // 
+    double par2   = lognormal_proposal_logscale(new_param(2), param(2)); // 
+    double nnsep2 = normal_proposal_logitscale(new_param(3), param(3)); // 
+    double par3   = lognormal_proposal_logscale(new_param(4), param(4)); // 
+    
+    return par1 + par2 + par3 + nnsep1 + nnsep2 + 
       norm_prop_logitbound_varsim;
   }
 }

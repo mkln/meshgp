@@ -61,8 +61,8 @@ mvn <- function(n, mu, sigma) {
     .Call(`_meshgp_mvn`, n, mu, sigma)
 }
 
-xCovHUV_base <- function(h, u, v, params) {
-    .Call(`_meshgp_xCovHUV_base`, h, u, v, params)
+xCovHUV_base <- function(h, u, v, params, q, dim) {
+    .Call(`_meshgp_xCovHUV_base`, h, u, v, params, q, dim)
 }
 
 xCovHUV <- function(coords, ind1, ind2, cparams, Dmat, same = FALSE) {

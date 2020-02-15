@@ -198,8 +198,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // xCovHUV_base
-double xCovHUV_base(double h, double u, double v, const arma::vec& params);
-RcppExport SEXP _meshgp_xCovHUV_base(SEXP hSEXP, SEXP uSEXP, SEXP vSEXP, SEXP paramsSEXP) {
+double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q, int dim);
+RcppExport SEXP _meshgp_xCovHUV_base(SEXP hSEXP, SEXP uSEXP, SEXP vSEXP, SEXP paramsSEXP, SEXP qSEXP, SEXP dimSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -207,7 +207,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type u(uSEXP);
     Rcpp::traits::input_parameter< double >::type v(vSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type params(paramsSEXP);
-    rcpp_result_gen = Rcpp::wrap(xCovHUV_base(h, u, v, params));
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type dim(dimSEXP);
+    rcpp_result_gen = Rcpp::wrap(xCovHUV_base(h, u, v, params, q, dim));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -289,7 +291,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_part_axis_parallel", (DL_FUNC) &_meshgp_part_axis_parallel, 3},
     {"_meshgp_mesh_graph_cpp", (DL_FUNC) &_meshgp_mesh_graph_cpp, 3},
     {"_meshgp_mvn", (DL_FUNC) &_meshgp_mvn, 3},
-    {"_meshgp_xCovHUV_base", (DL_FUNC) &_meshgp_xCovHUV_base, 4},
+    {"_meshgp_xCovHUV_base", (DL_FUNC) &_meshgp_xCovHUV_base, 6},
     {"_meshgp_xCovHUV", (DL_FUNC) &_meshgp_xCovHUV, 6},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 35},
     {NULL, NULL, 0}
