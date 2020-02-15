@@ -1,31 +1,31 @@
-meshgp <- function(y, X, coords, Mv, 
+meshgp_svc <- function(y, X, Z, coords, Mv, 
                    mcmc        = list(keep=1000, burn=0, thin=1),
                    num_threads = 7,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
                                       reference_full_coverage=F, verbose=F, debug=F, 
                                       printall=F, saving=T, seed=NULL),
-                   prior       = list(phi1=NULL, phi2=NULL),
+                   prior       = list(set_unif_bounds=NULL),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T),
                    dry_run     = F,
                    recover     = list()
                    ){
-  
-  
   if(F){
     mcmc        = list(keep=10, burn=0, thin=1)
     num_threads = 11
     settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
-                       reference_full_coverage=T, verbose=F, debug=F, printall=F, seed=NULL)
-    prior       = list(phi1=c(0.01, 30), phi2=c(0.01, 30))
+                       reference_full_coverage=F, verbose=T, debug=T, printall=F, seed=NULL)
+    prior       = list(set_unif_bounds=matrix(rbind(c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf)), ncol=2))
     starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
     debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
     dry_run     = F
     recover     = list()
+    X <- X_full
+    Z <- Z_full
+    y <- y1
   }
   
   # init
-  
   cat(" Bayesian MeshGP model with cubic tessellation & cubic mesh (Q-MGP)\n
     o --> o --> o
     ^     ^     ^
@@ -53,7 +53,6 @@ meshgp <- function(y, X, coords, Mv,
       saving         <- settings$saving
     }
     
-    
     rfc_dependence <- settings$reference_full_coverage
     
     seeded         <- ifelse(is.null(settings$seed), round(runif(1, 0, 1000)), settings$seed)
@@ -66,6 +65,7 @@ meshgp <- function(y, X, coords, Mv,
     
     dd             <- ncol(coords)
     p              <- ncol(X)
+    q              <- ncol(Z)
     nr             <- nrow(X)
     
     if(length(Mv) == 1){
@@ -83,7 +83,8 @@ meshgp <- function(y, X, coords, Mv,
       if(dd == 2){
         start_theta <- 10
       } else {
-        start_theta <- c(10, 10, .5)
+        start_theta <- rep(1, 5 + q * (q-1)/2) # excluding sigmasq
+        start_theta[c(2,4)] <- .5
       }
     } else {
       start_theta  <- starting$theta
@@ -102,21 +103,15 @@ meshgp <- function(y, X, coords, Mv,
     }
     
     if(is.null(starting$w)){
-      start_w <- rep(0, nr) %>% matrix(ncol=1)
+      start_w <- rep(0, q*nr) %>% matrix(ncol=q)
     } else {
-      start_w <- starting$w %>% matrix(ncol=1)
+      start_w <- starting$w #%>% matrix(ncol=q)
     }
     
-    if(is.null(prior$phi1)){
-      phi1_prior <- c(1, 300)
+    if(is.null(prior$set_unif_bounds)){
+      set_unif_bounds <- matrix(rbind(c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf)), ncol=2)
     } else {
-      phi1_prior <- prior$phi1
-    }
-    
-    if(is.null(prior$phi2)){
-      phi2_prior <- c(1, 300)
-    } else {
-      phi2_prior <- prior$phi2
+      set_unif_bounds <- prior$set_unif_bounds
     }
     
     if(length(settings$mcmcsd) == 1){
@@ -133,10 +128,18 @@ meshgp <- function(y, X, coords, Mv,
     orig_X_colnames <- colnames(X)
     colnames(X)     <- paste0('X_', 1:ncol(X))
   }
+  
+  if(is.null(colnames(Z))){
+    orig_Z_colnames <- colnames(Z) <- paste0('Z_', 1:ncol(Z))
+  } else {
+    orig_Z_colnames <- colnames(Z)
+    colnames(Z)     <- paste0('Z_', 1:ncol(Z))
+  }
+  
   colnames(coords)  <- paste0('Var', 1:dd)
   
   na_which <- ifelse(!is.na(y), 1, NA)
-  simdata <- coords %>% cbind(y) %>% cbind(na_which) %>% cbind(X) %>% as.data.frame()
+  simdata <- coords %>% cbind(y) %>% cbind(na_which) %>% cbind(X) %>% cbind(Z) %>% as.data.frame()
   if(dd == 2){
     simdata %<>% arrange(Var1, Var2)
     coords <- simdata %>% select(Var1, Var2)
@@ -146,9 +149,12 @@ meshgp <- function(y, X, coords, Mv,
     coords <- simdata %>% select(Var1, Var2, Var3)
     colnames(simdata)[4:5] <- c("y", "na_which")
   }
+  
   y           <- simdata$y %>% matrix(ncol=1)
   X           <- simdata %>% select(contains("X_")) %>% as.matrix()
   colnames(X) <- orig_X_colnames
+  Z           <- simdata %>% select(contains("Z_")) %>% as.matrix()
+  colnames(Z) <- orig_Z_colnames
   na_which    <- simdata$na_which
   
   if(!is.matrix(coords)){
@@ -183,6 +189,7 @@ meshgp <- function(y, X, coords, Mv,
     
     #block_groups <- check_gibbs_groups(block_groups, parents, children, block_names, blocking, 20)
   } else {
+    cat("Restoring tessellation and graph from recovered data.\n")
     # taking these from recovered data
     parents      <- list()
     children     <- list()
@@ -194,16 +201,15 @@ meshgp <- function(y, X, coords, Mv,
   
   if(!dry_run){
     set.seed(seeded)
-
+    cat(start_theta, "\n")
     comp_time <- system.time({
-      results <- qmeshgp_mcmc(y, X, coords, blocking,
+      results <- qmeshgp_svc_mcmc(y, X, Z, coords, blocking,
                               
                               parents, children, 
                               block_names, block_groups,
                               indexing,
                               
-                              phi1_prior,
-                              phi2_prior,
+                              set_unif_bounds,
                               
                               start_w, 
                               start_theta,
@@ -318,7 +324,7 @@ meshgp <- function(y, X, coords, Mv,
     )
     
     comp_time <- system.time({
-      results <- qmeshgp_dry(y, X, coords, blocking,
+      results <- qmeshgp_svc_dry(y, X, Z, coords, blocking,
                               
                               parents, children, block_names, block_groups,
                               indexing,
@@ -346,17 +352,10 @@ meshgp <- function(y, X, coords, Mv,
                               sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w) 
     })
     
-    #list2env(results, environment())
-    
     return(list(infoplots = infoplots,
                 groups    = block_groups,
                 seed      = seeded, 
                 coords    = coords_blocking_mod,
                 recover   = results))
-                #model_data = model_data,
-                #model     = model,
-                #caching   = caching,
-                #params    = params,
-                #settings  = settings))
     }
 }
