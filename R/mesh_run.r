@@ -22,7 +22,6 @@ meshgp <- function(y, X, coords, Mv,
     debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
     dry_run     = F
     recover     = list()
-    
   }
   
   # init
@@ -84,7 +83,7 @@ meshgp <- function(y, X, coords, Mv,
       if(dd == 2){
         start_theta <- 10
       } else {
-        start_theta <- c(10, 10)
+        start_theta <- c(10, 10, .5)
       }
     } else {
       start_theta  <- starting$theta
@@ -109,13 +108,13 @@ meshgp <- function(y, X, coords, Mv,
     }
     
     if(is.null(prior$phi1)){
-      phi1_prior <- c(0.01, 30)
+      phi1_prior <- c(1, 300)
     } else {
       phi1_prior <- prior$phi1
     }
     
     if(is.null(prior$phi2)){
-      phi2_prior <- c(0.01, 30)
+      phi2_prior <- c(1, 300)
     } else {
       phi2_prior <- prior$phi2
     }

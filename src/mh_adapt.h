@@ -8,6 +8,7 @@ const int g0 = 500; // iterations before starting adaptation
 const double rho_max = 2;
 const double rho_min = 5;
 
+
 inline bool do_I_accept(double logaccept){ //, string name_accept, string name_count, List mcmc_pars){
   double acceptj = 1.0;
   if(!arma::is_finite(logaccept)){
@@ -59,11 +60,112 @@ inline void adapt(const arma::vec& param,
   }
 }
 
+inline double logistic(double x, double l=1){
+  return l/(1.0+exp(-x));
+}
+
+inline double logit(double x, double l=1){
+  return log(x/(l-x));
+}
+
+inline arma::vec par_transf_fwd(arma::vec par){
+  if(par.n_elem > 1){
+    // gneiting nonsep 
+    par(0) = log(par(0));
+    par(1) = log(par(1));
+    par(2) = logit(par(2));
+    return par;
+  } else {
+    return log(par);
+  }
+}
+
+
+inline arma::vec par_transf_back(arma::vec par){
+  if(par.n_elem > 1){
+    // gneiting nonsep 
+    par(0) = exp(par(0));
+    par(1) = exp(par(1));
+    par(2) = logistic(par(2));
+    return par;
+  } else {
+    return exp(par);
+  }
+}
+
+inline arma::vec par_huvtransf_fwd(arma::vec par, double l=2){
+    // apanasovich&genton huv nonsep 
+    par(0) = log(par(0));
+    par(1) = logit(par(1));
+    par(2) = log(par(2));
+    par(3) = logit(par(3));
+    par(4) = log(par(4));
+    
+    for(int j=5; j<par.n_elem; j++){
+      par(j) = logit(par(j), l);
+    }
+    return par;
+}
+
+
+inline arma::vec par_huvtransf_back(arma::vec par, double l=2){
+    // apanasovich&genton huv nonsep 
+    par(0) = exp(par(0));
+    par(1) = logistic(par(1));
+    par(2) = exp(par(2));
+    par(3) = logistic(par(3));
+    par(4) = exp(par(4));
+    
+    for(int j=5; j<par.n_elem; j++){
+      par(j) = logistic(par(j), l);
+    }
+    return par;
+}
+
+
+inline bool unif_bounds(arma::vec& par, const arma::mat& bounds){
+  bool out_of_bounds = false;
+  for(int i=0; i<par.n_elem; i++){
+    arma::rowvec ibounds = bounds.row(i);
+    if( par(i) < ibounds(0) ){
+      out_of_bounds = true;
+      par(i) = ibounds(0) + 1e-5;
+    }
+    if( par(i) > ibounds(1) ){
+      out_of_bounds = true;
+      par(i) = ibounds(1) - 1e-5;
+    }
+  }
+  return out_of_bounds;
+}
 
 inline double lognormal_proposal_logscale(const double& xnew, const double& xold){
   // returns  + log x' - log x
   // to be + to log prior ratio log pi(x') - log pi(x)
   return log(xnew) - log(xold);
+}
+
+inline double normal_proposal_logitscale(const double& xnew, const double& xold, int l=1){
+  return log(xnew * (l-xnew)) - log(xold * (l-xold));
+}
+
+inline double calc_jacobian(int d, int q, int k, const arma::vec& new_param, const arma::vec& param){
+  
+  double norm_prop_logitbound_varsim = 0;
+  for(int vj=0; vj<k; vj++){
+    norm_prop_logitbound_varsim += normal_proposal_logitscale(new_param(5+vj), param(5+vj), 2);
+  }
+  
+  if(d == 2){
+    return lognormal_proposal_logscale(new_param(0), param(0));
+  } else {
+    return lognormal_proposal_logscale(new_param(4), param(4)) + // phi1 par
+      lognormal_proposal_logscale(new_param(0), param(0)) + // psi1 par-1
+      normal_proposal_logitscale(new_param(1), param(1)) + // psi1 par-2
+      lognormal_proposal_logscale(new_param(2), param(2)) + // psi1 par-1
+      normal_proposal_logitscale(new_param(3), param(3)) + // psi1 par-2
+      norm_prop_logitbound_varsim;
+  }
 }
 
 
@@ -74,3 +176,5 @@ inline double lognormal_logdens(const double& x, const double& m, const double& 
 inline double gamma_logdens(const double& x, const double& a, const double& b){
   return -lgamma(a) + a*log(b) + (a-1)*log(x) - b*x;
 }
+
+

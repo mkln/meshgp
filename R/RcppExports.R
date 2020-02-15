@@ -17,38 +17,6 @@ check_gibbs_groups <- function(block_groups, parents, children, block_names, blo
     .Call(`_meshgp_check_gibbs_groups`, block_groups, parents, children, block_names, blocks, maxit)
 }
 
-Kpp <- function(x1, x2, theta, same = FALSE) {
-    .Call(`_meshgp_Kpp`, x1, x2, theta, same)
-}
-
-Kppc <- function(coords, ind1, ind2, theta, same = FALSE) {
-    .Call(`_meshgp_Kppc`, coords, ind1, ind2, theta, same)
-}
-
-Kpp_mp <- function(x1, x2, theta, same = FALSE) {
-    .Call(`_meshgp_Kpp_mp`, x1, x2, theta, same)
-}
-
-xKpp <- function(x1, x2, params) {
-    .Call(`_meshgp_xKpp`, x1, x2, params)
-}
-
-KppG <- function(coords, ind1, ind2, theta, same = FALSE) {
-    .Call(`_meshgp_KppG`, coords, ind1, ind2, theta, same)
-}
-
-Kpp_choice <- function(coords, ind1, ind2, theta, same = FALSE) {
-    .Call(`_meshgp_Kpp_choice`, coords, ind1, ind2, theta, same)
-}
-
-csplit <- function(x_orig) {
-    .Call(`_meshgp_csplit`, x_orig)
-}
-
-ms_seq <- function(coords, ell) {
-    .Call(`_meshgp_ms_seq`, coords, ell)
-}
-
 find_not_nan <- function(infield, filtering) {
     .Call(`_meshgp_find_not_nan`, infield, filtering)
 }
@@ -59,6 +27,10 @@ hex_to_dec <- function(hex_value) {
 
 hex_to_dec_vec <- function(vec_hex) {
     .Call(`_meshgp_hex_to_dec_vec`, vec_hex)
+}
+
+list_mean <- function(x) {
+    .Call(`_meshgp_list_mean`, x)
 }
 
 noseqdup <- function(x, has_changed, maxc, na = -1L, pred = 2L) {
@@ -89,15 +61,15 @@ mvn <- function(n, mu, sigma) {
     .Call(`_meshgp_mvn`, n, mu, sigma)
 }
 
-list_mean <- function(x) {
-    .Call(`_meshgp_list_mean`, x)
+xCovHUV_base <- function(h, u, v, params) {
+    .Call(`_meshgp_xCovHUV_base`, h, u, v, params)
 }
 
-qmeshgp_mcmc <- function(y, X, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, phi1_prior, phi2_prior, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, saving = TRUE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
-    .Call(`_meshgp_qmeshgp_mcmc`, y, X, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, phi1_prior, phi2_prior, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, rfc, verbose, debug, printall, saving, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
+xCovHUV <- function(coords, ind1, ind2, cparams, Dmat, same = FALSE) {
+    .Call(`_meshgp_xCovHUV`, coords, ind1, ind2, cparams, Dmat, same)
 }
 
-qmeshgp_dry <- function(y, X, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, start_w, theta, beta, tausq, sigmasq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
-    .Call(`_meshgp_qmeshgp_dry`, y, X, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, start_w, theta, beta, tausq, sigmasq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, rfc, verbose, debug, printall, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
+qmeshgp_svc_mcmc <- function(y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, saving = TRUE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
+    .Call(`_meshgp_qmeshgp_svc_mcmc`, y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, rfc, verbose, debug, printall, saving, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
 }
 
