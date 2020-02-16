@@ -181,13 +181,28 @@ inline double calc_jacobian(int k, const arma::vec& new_param,
   }
 }
 
-
 inline double lognormal_logdens(const double& x, const double& m, const double& ssq){
   return -.5*(2*PI*ssq) - .5/ssq * pow(log(x) - m, 2) - log(x);
 }
 
 inline double gamma_logdens(const double& x, const double& a, const double& b){
   return -lgamma(a) + a*log(b) + (a-1)*log(x) - b*x;
+}
+
+inline double calc_prior_logratio(int k, const arma::vec& new_param, 
+                            const arma::vec& param, int npars){
+  
+  if(npars == 1){
+    return 0;
+  } else {
+    double a = 2.0;
+    double b = 1.0/20.0;
+    double par1   = gamma_logdens(new_param(0), a, b) - gamma_logdens(param(0), a, b); // 
+    double par2   = gamma_logdens(new_param(2), a, b) - gamma_logdens(param(2), a, b); // 
+    double par3   = gamma_logdens(new_param(4), a, b) - gamma_logdens(param(4), a, b); // 
+    
+    return par1 + par2 + par3;
+  }
 }
 
 

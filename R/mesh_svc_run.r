@@ -22,7 +22,7 @@ meshgp <- function(y, X, Z, coords, Mv,
     recover     = list()
     X <- X_full
     Z <- Z_full
-    y <- y1
+    y <- y_full
   }
   
   # init
@@ -66,13 +66,24 @@ meshgp <- function(y, X, Z, coords, Mv,
     dd             <- ncol(coords)
     p              <- ncol(X)
     q              <- ncol(Z)
+    k              <- q * (q-1)/2
     nr             <- nrow(X)
     space_uni      <- (q==1) & (dd==2)
     
     if(length(Mv) == 1){
       Mv <- rep(Mv, dd)
     }
-    cat(sprintf("~ using %s partitions for each axis (total M=%d)", paste(Mv, collapse=" "), prod(Mv)),"\n")
+    avg_block <- nr/prod(Mv)*q
+    cat(sprintf("~ %s intervals along the axes (total M=%d)", paste(Mv, collapse=" "), prod(Mv)),"\n")
+    cat(sprintf("~ %s average block size", avg_block),"\n")
+    
+    if(avg_block > 100){
+      goon <- readline(prompt="Average block size is large. Iterations will be slow. Continue? Y/n: ")
+      goon <- tolower(goon)
+      if(!(goon %in% c("y", ""))){
+        return(0)
+      }
+    }
     
     if(is.null(starting$beta)){
       start_beta   <- rep(0, p)
@@ -84,7 +95,8 @@ meshgp <- function(y, X, Z, coords, Mv,
       if(space_uni){
         start_theta <- 10
       } else {
-        start_theta <- rep(1, 5 + q * (q-1)/2) # excluding sigmasq
+        start_theta <- rep(1, 5 + k) # excluding sigmasq
+        start_theta[c(1,3,5)] <- 10
         start_theta[c(2,4)] <- .5
       }
     } else {
@@ -110,7 +122,11 @@ meshgp <- function(y, X, Z, coords, Mv,
     }
     
     if(is.null(prior$set_unif_bounds)){
-      set_unif_bounds <- matrix(rbind(c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf)), ncol=2)
+      set_unif_bounds <- matrix(rbind(c(1e-5, Inf), 
+                                      c(1e-5, 1-1e-5), 
+                                      c(1e-5, Inf), 
+                                      c(1e-5, 1-1e-5), 
+                                      c(1e-5, Inf)), ncol=2)
     } else {
       set_unif_bounds <- prior$set_unif_bounds
     }
@@ -207,7 +223,6 @@ meshgp <- function(y, X, Z, coords, Mv,
   
   if(!dry_run){
     set.seed(seeded)
-    cat(start_theta, "\n")
     comp_time <- system.time({
       results <- qmeshgp_svc_mcmc(y, X, Z, coords, blocking,
                               
@@ -268,7 +283,7 @@ meshgp <- function(y, X, Z, coords, Mv,
     modplot              <- coords_blocking %>% select(block, color) %>% unique() %>% cbind(block_groups[order(order(ggroup))]) 
     colnames(modplot)[3] <- "groupmod"
     
-    coords_blocking_mod  <- coords_blocking %>% left_join(modplot)
+    suppressMessages(coords_blocking_mod  <- coords_blocking %>% left_join(modplot))
     gplotcols            <- c("#CB2314","#273046","#354823","#1E1E1E","#FAD510",
                               "#DD8D29", "magenta" ,"#46ACC8", "#E58601", "#B40F20")
     block_colorplot_text <- ggplot(coords_blocking_mod, aes(Var1, Var2, label=block, color=factor(groupmod))) + 
@@ -297,7 +312,7 @@ meshgp <- function(y, X, Z, coords, Mv,
       labs(x=NULL, y=NULL) + 
       ggtitle("Dist. of not-NA observations by block")
     
-    meshinfo             <- simdata %>% left_join(coords_blocking)
+    suppressMessages(meshinfo             <- simdata %>% left_join(coords_blocking))
     data_scatter         <- ggplot(coords_blocking, aes(Var1, Var2)) + 
       geom_point(aes(color=factor(na_which)), size=1) +
       theme(legend.position="bottom")

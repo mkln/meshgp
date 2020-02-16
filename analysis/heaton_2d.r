@@ -11,7 +11,7 @@ library(meshgp)
 
 set.seed(ss <- 1)
 
-simdata <- T
+simdata <- F
 if(simdata){
   #load("data/AllSimulatedTemps.RData")
   load(url("https://github.com/finnlindgren/heatoncomparison/raw/master/Data/AllSimulatedTemps.RData"))
@@ -48,18 +48,18 @@ mcmc_burn <- 100
 mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
-mesh_settings <- list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=T, 
+mesh_settings <- list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
                       reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=NULL)
-mesh_starting <- list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
+mesh_starting <- list(beta=NULL, tausq=0.1, sigmasq=1, theta=NULL, w=NULL)
 
 
 # MESH
-Mv <- c(50,60)#c(25,15) # 
+Mv <- c(50,50)#c(25,15) # 
 (nr / prod(Mv) * ncol(Z))
 
 set.seed(1)
 mesh_time <- system.time({
-  meshout <- meshgp_svc(y, X, Z, coords, Mv=Mv, 
+  meshout <- meshgp(y, X, Z, coords, Mv=Mv, 
                     mcmc = mesh_mcmc,
                     num_threads = 11,
                     settings    = mesh_settings,
@@ -85,8 +85,11 @@ meshgp_df <- meshout$coords %>%
   cbind(w_mcmc    %>% list_mean(),
         yhat_mcmc %>% list_mean()) %>%
   as.data.frame() %>% 
-  arrange(Var1, Var2) %>% 
-  rename(w_meshgp = V3, y_meshgp = V4) %>% 
+  arrange(Var1, Var2) 
+
+colnames(meshgp_df) <- c("Var1", "Var2", paste0("w_meshgp_", 1:ncol(Z)), "y_meshgp")
+
+meshgp_df %<>% 
   mutate(y_meshgp = y_meshgp + ybar) %>%
   mutate(y_meshgp_low = y_meshgp %>% quantile(.025),
          y_meshgp_hi  = y_meshgp %>% quantile(.975))
@@ -100,15 +103,15 @@ outsample %$% sqrt(mean((y_meshgp-y_full)^2, na.rm=T))
 outsample %$% mean(abs(y_meshgp-y_full), na.rm=T)
 outsample %$% mean((y_meshgp_low<y_full) & (y_full<y_meshgp_hi), na.rm=T)
 
-save(file="heaton_{label}_perf_{Mv[1]}x{Mv[2]}.RData" %>% glue::glue(), 
-     list=c("outsample", "M", "model_compare", "mesh_mcmc", "mesh_settings", "mesh_starting",
-            "meshout", "mesh_time"))
+#save(file="heaton_{label}_perf_{Mv[1]}x{Mv[2]}.RData" %>% glue::glue(), 
+#     list=c("outsample", "M", "model_compare", "mesh_mcmc", "mesh_settings", "mesh_starting",
+#            "meshout", "mesh_time"))
 
 ##################
 # POSTPROCESSING #
 ##################
 plotdf <- model_compare %>% mutate(y = y + ybar) %>%
-  select(-y_meshgp_hi, -y_meshgp_low, -w_meshgp) %>% 
+  select(-y_meshgp_hi, -y_meshgp_low, -contains("w_")) %>% 
   rename(MaskTemp = y,
          TrueTemp = y_full,
          Predicted = y_meshgp) %>%

@@ -153,6 +153,7 @@ Rcpp::List qmeshgp_svc_mcmc(
     vbounds.col(1) += dlim - 1e-5;
     set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
   }
+  
   /*
   arma::vec active_pars = arma::ones(npars);
   arma::mat active_pars_mat = arma::ones(npars, npars);
@@ -203,7 +204,7 @@ Rcpp::List qmeshgp_svc_mcmc(
     Rcpp::Rcout << "starting from ll: " << current_loglik << endl; 
   }
   
-  double logaccept, prior_logratio;
+  double logaccept;
   
   double propos_count = 0;
   double accept_count = 0;
@@ -307,13 +308,9 @@ Rcpp::List qmeshgp_svc_mcmc(
           throw 1;
         }
         
-        prior_logratio = 0;//gamma_logdens(1.0/new_param(0), 2.0, 1.0/2.0) - gamma_logdens(1.0/param(0), 2.0, 1.0/2.0);  // sigmasq
-        //lognormal_logdens(new_param(0), 0, 1) - lognormal_logdens(param(0), 0, 1);// + //sigmasq
-        //lognormal_logdens(new_param(1), 0, 1) - lognormal_logdens(param(1), 0, 1) + //phi
-        //gamma_logdens(new_param(npars-1), a, b) - gamma_logdens(param(npars-1), a, b);  // tausq_inv
-      
-        double jacobian = calc_jacobian(k, new_param, param, npars);
-        logaccept = new_loglik - current_loglik + jacobian;
+        double prior_logratio = calc_prior_logratio(k, new_param, param, npars);
+        double jacobian       = calc_jacobian(k, new_param, param, npars);
+        logaccept = new_loglik - current_loglik + prior_logratio + jacobian;
   
         bool accepted = do_I_accept(logaccept);
         if(out_unif_bounds){

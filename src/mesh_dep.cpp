@@ -29,7 +29,7 @@ arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na=-1, int pred
 arma::mat mesh_gibbs_groups(const arma::mat& layers_descr, 
                               const arma::uvec& Mv, bool rfc){
   
-  Rcpp::Rcout << "~ grouping blocks into ci groups... ";
+  Rcpp::Rcout << "~ Grouping nodes for parallel Gibbs sampling ";
   std::chrono::steady_clock::time_point start, start_all;
   std::chrono::steady_clock::time_point end, end_all;
   
@@ -60,7 +60,6 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
     int maxg = Col2.max();
     bool has_changed=true;
     int it = 0;
-    Rcpp::Rcout << maxg << endl;
     
     int Imax = Col2.n_rows-1;
     int Jmax = Col2.n_cols-1;

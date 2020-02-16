@@ -87,6 +87,7 @@ double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q
 
 }
 
+
 arma::mat vec_to_symmat(const arma::vec& x){
   int k = x.n_elem; // = p(p-1)/2
   int p = ( 1 + sqrt(1 + 8*k) )/2;

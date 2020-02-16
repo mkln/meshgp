@@ -823,13 +823,10 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
   int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
   
-  //Rcpp::Rcout << Kparam << endl;
-  //Rcpp::Rcout << "npars: " << npars << endl;
-  
   arma::vec cparams = Kparam.subvec(0, npars);
   arma::mat Dmat;
   if(k>0){
-    Dmat = vec_to_symmat(Kparam.subvec(npars, npars+k));
+    Dmat = vec_to_symmat(Kparam.subvec(npars+1, npars+k));
   } else {
     Dmat = arma::zeros(1,1);
   }
@@ -965,7 +962,7 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
   } else {
     Dmat = arma::zeros(1,1);
   }
-  
+
 #pragma omp parallel for // **
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;

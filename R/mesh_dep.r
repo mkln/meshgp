@@ -26,7 +26,8 @@ mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F){
   } else {
     colnames(groups) <- c("L1", "L2", "group")
   }
-  groups <- blocks_descr %>% as.data.frame() %>% left_join(groups %>% as.data.frame()) %$% group
+  suppressMessages(
+    groups <- blocks_descr %>% as.data.frame() %>% left_join(groups %>% as.data.frame()) %$% group)
   
   list2env(graphed, environment())
   return(list(parents = parents,
