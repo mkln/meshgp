@@ -33,6 +33,10 @@ list_mean <- function(x) {
     .Call(`_meshgp_list_mean`, x)
 }
 
+list_qtile <- function(x, q) {
+    .Call(`_meshgp_list_qtile`, x, q)
+}
+
 noseqdup <- function(x, has_changed, maxc, na = -1L, pred = 2L) {
     .Call(`_meshgp_noseqdup`, x, has_changed, maxc, na, pred)
 }

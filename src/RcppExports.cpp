@@ -106,6 +106,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// list_qtile
+arma::mat list_qtile(const arma::field<arma::mat>& x, double q);
+RcppExport SEXP _meshgp_list_qtile(SEXP xSEXP, SEXP qSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type q(qSEXP);
+    rcpp_result_gen = Rcpp::wrap(list_qtile(x, q));
+    return rcpp_result_gen;
+END_RCPP
+}
 // noseqdup
 arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na, int pred);
 RcppExport SEXP _meshgp_noseqdup(SEXP xSEXP, SEXP has_changedSEXP, SEXP maxcSEXP, SEXP naSEXP, SEXP predSEXP) {
@@ -284,6 +296,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_hex_to_dec", (DL_FUNC) &_meshgp_hex_to_dec, 1},
     {"_meshgp_hex_to_dec_vec", (DL_FUNC) &_meshgp_hex_to_dec_vec, 1},
     {"_meshgp_list_mean", (DL_FUNC) &_meshgp_list_mean, 1},
+    {"_meshgp_list_qtile", (DL_FUNC) &_meshgp_list_qtile, 2},
     {"_meshgp_noseqdup", (DL_FUNC) &_meshgp_noseqdup, 5},
     {"_meshgp_mesh_gibbs_groups", (DL_FUNC) &_meshgp_mesh_gibbs_groups, 3},
     {"_meshgp_turbocolthreshold", (DL_FUNC) &_meshgp_turbocolthreshold, 2},
