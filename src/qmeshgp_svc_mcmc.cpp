@@ -229,7 +229,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   Rcpp::List recovered;
   
   start_all = std::chrono::steady_clock::now();
-  int m=0; int mx=0;
+  int m=0; int mx=0; int num_chol_fails=0;
   try { 
     for(m=0; m<mcmc; m++){
       
@@ -300,23 +300,32 @@ Rcpp::List qmeshgp_svc_mcmc(
         mesh.theta_update(mesh.alter_data, new_param); 
         mesh.get_loglik_comps_w( mesh.alter_data );
         
-        double new_loglik = mesh.alter_data.loglik_w;
-        current_loglik = mesh.param_data.loglik_w;
+        bool accepted = !out_unif_bounds;
+        double new_loglik = 0;
+        double prior_logratio = 0;
+        double jacobian = 0;
         
-        if(isnan(current_loglik)){
-          Rcpp::Rcout << "At nan loglik: error. \n";
-          throw 1;
-        }
-        
-        double prior_logratio = calc_prior_logratio(k, new_param, param, npars);
-        double jacobian       = calc_jacobian(k, new_param, param, npars);
-        logaccept = new_loglik - current_loglik + prior_logratio + jacobian;
-  
-        bool accepted = do_I_accept(logaccept);
-        if(out_unif_bounds){
+        if(!mesh.alter_data.cholfail){
+          new_loglik = mesh.alter_data.loglik_w;
+          current_loglik = mesh.param_data.loglik_w;
+          
+          if(isnan(current_loglik)){
+            Rcpp::Rcout << "At nan loglik: error. \n";
+            throw 1;
+          }
+          
+          prior_logratio = calc_prior_logratio(k, new_param, param, npars);
+          jacobian       = calc_jacobian(k, new_param, param, npars);
+          logaccept = new_loglik - current_loglik + prior_logratio + jacobian;
+          
+          accepted = do_I_accept(logaccept);
+        } else {
           accepted = false;
+          num_chol_fails ++;
+          printf("[warning] chol failure #%d at mh proposal -- auto rejected\n", num_chol_fails);
+          Rcpp::Rcout << new_param.t() << "\n";
         }
-        
+      
         if(accepted){
           std::chrono::steady_clock::time_point start_copy = std::chrono::steady_clock::now();
           

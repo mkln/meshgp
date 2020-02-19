@@ -28,6 +28,9 @@ struct MeshData {
   arma::vec loglik_w_comps;
   double loglik_w;
   
+  arma::uvec track_chol_fails;
+  bool cholfail;
+  
 };
 
 void print_data(const MeshData& data);
