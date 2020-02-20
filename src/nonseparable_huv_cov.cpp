@@ -42,8 +42,6 @@ double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q
   // alpha=0.5
   // gamma=0.5 
   if(dim == 3){
-    // space-variable partially separable
-    // (some speedup possible if Mv[3]==T as then every block can be kron'ed)
     double sigmasq   = params(0);
     double a_psi2    = params(1);
     double beta_psi2 = params(2);
