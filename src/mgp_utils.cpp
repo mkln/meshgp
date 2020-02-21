@@ -63,4 +63,9 @@ void print_data(const MeshData& data){
   Rcpp::Rcout << "------------------" << endl;
 }
 
+arma::vec kdiagchol(const arma::mat& Koo, const arma::mat& Kos, const arma::mat& Kssi){
+  arma::vec temp = arma::sum( ( Kos * Kssi ) % Kos, 1);
+  return sqrt( 1.0/( Koo.diag() - temp ) );
+}
+
 

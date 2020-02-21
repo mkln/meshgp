@@ -36,5 +36,7 @@ struct MeshData {
 void print_data(const MeshData& data);
 
 
+arma::vec kdiagchol(const arma::mat& Koo, const arma::mat& Kos, const arma::mat& Kssi);
+
 #endif
 

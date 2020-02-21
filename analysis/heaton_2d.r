@@ -39,12 +39,12 @@ coords <- simdf %>% select(Var1, Var2) %>% as.matrix() %>%
 
 nr <- nrow(coords)
 X <- coords#matrix(1, nrow=nr) 
-Z <- matrix(1, nrow=nr) 
+Z <- matrix(1, nrow=nr)
 ybar <- mean(simdf$y, na.rm=T)
 y <- simdf$y - ybar
 
-mcmc_keep <- 100
-mcmc_burn <- 100
+mcmc_keep <- 200
+mcmc_burn <- 300
 mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
@@ -54,7 +54,7 @@ mesh_starting <- list(beta=NULL, tausq=0.1, sigmasq=1, theta=NULL, w=NULL)
 
 
 # MESH
-Mv <- c(50,50)#c(25,15) # 
+Mv <- c(125,75)#c(25,15) # 
 (nr / prod(Mv) * ncol(Z))
 
 set.seed(1)
@@ -68,6 +68,7 @@ mesh_time <- system.time({
                     dry_run     = F,
                     recover     = list())
 })
+# 393.786   0.625  38.652 
 
 beta_mcmc <- meshout$beta_mcmc
 sigmasq_mcmc <- meshout$sigmasq_mcmc
@@ -103,6 +104,13 @@ outsample %$% sqrt(mean((y_meshgp-y_full)^2, na.rm=T))
 outsample %$% mean(abs(y_meshgp-y_full), na.rm=T)
 outsample %$% mean((y_meshgp_low<y_full) & (y_full<y_meshgp_hi), na.rm=T)
 
+#> outsample %$% sqrt(mean((y_meshgp-y_full)^2, na.rm=T))
+#[1] 1.58725
+#> outsample %$% mean(abs(y_meshgp-y_full), na.rm=T)
+#[1] 1.133814
+#> outsample %$% mean((y_meshgp_low<y_full) & (y_full<y_meshgp_hi), na.rm=T)
+#[1] 0.9291764
+
 #save(file="heaton_{label}_perf_{Mv[1]}x{Mv[2]}.RData" %>% glue::glue(), 
 #     list=c("outsample", "M", "model_compare", "mesh_mcmc", "mesh_settings", "mesh_starting",
 #            "meshout", "mesh_time"))
@@ -111,10 +119,11 @@ outsample %$% mean((y_meshgp_low<y_full) & (y_full<y_meshgp_hi), na.rm=T)
 # POSTPROCESSING #
 ##################
 plotdf <- model_compare %>% mutate(y = y + ybar) %>%
-  select(-y_meshgp_hi, -y_meshgp_low, -contains("w_")) %>% 
-  rename(MaskTemp = y,
-         TrueTemp = y_full,
-         Predicted = y_meshgp) %>%
+  #select(-y_meshgp_hi, -y_meshgp_low, -contains("w_")) %>% 
+  #rename(MaskTemp = y,
+  #       TrueTemp = y_full,
+  #       Predicted = y_meshgp) %>%
+  select(Var1, Var2, contains("w_")) %>%
   gather(z, zvalue, -Var1, -Var2) 
 
 (plotted <- ggplot(plotdf, aes(Var1, Var2, fill=zvalue)) + geom_raster() +
@@ -122,7 +131,7 @@ plotdf <- model_compare %>% mutate(y = y + ybar) %>%
     theme(legend.position="none") + labs(x=NULL, y=NULL) +
     scale_fill_viridis_c() + ggtitle("{tools::toTitleCase(label)} data from Heaton et al. (2019)" %>% glue::glue()))
 
-ggsave(filename="heaton_{label}_results_{Mv[1]}x{Mv[2]}.png", plot=plotted, width=10, height=3, units="in")
+#ggsave(filename="heaton_{label}_results_{Mv[1]}x{Mv[2]}.png", plot=plotted, width=10, height=3, units="in")
 
 
 

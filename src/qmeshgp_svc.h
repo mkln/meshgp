@@ -278,12 +278,19 @@ MeshGPsvc::MeshGPsvc(
   q  = Z.n_cols;
   dd = coords.n_cols;
   
-  if((q==1) & (dd==2)){
-    npars = 1;
+  if(dd == 2){
+    if(q < 2){
+      npars = 1;
+    } else {
+      npars = 5;
+    }
   } else {
-    npars = 5;
+    if(q < 3){
+      npars = 3;
+    } else {
+      npars = 5;
+    }
   }
-  
   printf("%d observed locations, %d to predict, %d total\n",
          n, y.n_elem-n, y.n_elem);
   
@@ -441,11 +448,18 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   Vim                 = Vi * bprim;
   
   printf("8 ");
-  
-  if((q==1) & (dd==2)){
-    npars = 1;
+  if(dd == 2){
+    if(q < 2){
+      npars = 1;
+    } else {
+      npars = 5;
+    }
   } else {
-    npars = 5;
+    if(q < 3){
+      npars = 3;
+    } else {
+      npars = 5;
+    }
   }
   
   fill_zeros_Kcache();
@@ -823,6 +837,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   arma::field<arma::mat> K_parents_cache(parents_caching.n_elem);
   arma::field<arma::mat> K_cholcp_cache(kr_caching.n_elem);
   //arma::field<arma::mat> Kcp_cache(kr_caching.n_elem);
+  
   arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
   int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
   

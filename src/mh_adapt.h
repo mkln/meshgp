@@ -102,11 +102,16 @@ inline arma::vec par_huvtransf_fwd(arma::vec par, int npars, double l=2){
     par(0) = log(par(0));
     par(1) = logit(par(1));
     par(2) = log(par(2));
-    par(3) = logit(par(3));
-    par(4) = log(par(4));
-    
-    for(int j=5; j<par.n_elem; j++){
-      par(j) = logit(par(j), l);
+    if(npars == 4){
+      par(3) = log(par(3)); // because we are setting a_psi2=1 and beta_psi2=1
+    }
+    if(npars > 4){
+      // multivariate
+      par(3) = logit(par(3));
+      par(4) = log(par(4));
+      for(int j=5; j<par.n_elem; j++){
+        par(j) = logit(par(j), l);
+      }
     }
     return par;
   }
@@ -122,11 +127,17 @@ inline arma::vec par_huvtransf_back(arma::vec par, int npars, double l=2){
     par(0) = exp(par(0));
     par(1) = logistic(par(1));
     par(2) = exp(par(2));
-    par(3) = logistic(par(3));
-    par(4) = exp(par(4));
     
-    for(int j=5; j<par.n_elem; j++){
-      par(j) = logistic(par(j), l);
+    if(npars == 4){
+      par(3) = exp(par(3)); // because we are setting a_psi2=1 and beta_psi2=1
+    }
+    if(npars > 4){
+      // multivariate
+      par(3) = logistic(par(3));
+      par(4) = exp(par(4));
+      for(int j=5; j<par.n_elem; j++){
+        par(j) = logistic(par(j), l);
+      }
     }
     return par;
   }
@@ -166,16 +177,23 @@ inline double calc_jacobian(int k, const arma::vec& new_param,
     return lognormal_proposal_logscale(new_param(0), param(0));
   } else {
     double norm_prop_logitbound_varsim = 0;
-    for(int vj=0; vj<k; vj++){
-      norm_prop_logitbound_varsim += normal_proposal_logitscale(new_param(5+vj), param(5+vj), 2);
-    }
+    double nnsep2 = 0;
+    double par3 = 0;
     
     double par1   = lognormal_proposal_logscale(new_param(0), param(0)); // 
     double nnsep1 = normal_proposal_logitscale(new_param(1), param(1)); // 
     double par2   = lognormal_proposal_logscale(new_param(2), param(2)); // 
-    double nnsep2 = normal_proposal_logitscale(new_param(3), param(3)); // 
-    double par3   = lognormal_proposal_logscale(new_param(4), param(4)); // 
-    
+    if(npars == 4){
+      // because a_psi2=1 and beta_psi2=1 this is [0, unifbound] and not [0, dlim].
+      norm_prop_logitbound_varsim = lognormal_proposal_logscale(new_param(3), param(3)); // 
+    }
+    if(npars > 4){
+      nnsep2 = normal_proposal_logitscale(new_param(3), param(3)); // 
+      par3   = lognormal_proposal_logscale(new_param(4), param(4)); // 
+      for(int vj=0; vj<k; vj++){
+        norm_prop_logitbound_varsim += normal_proposal_logitscale(new_param(5+vj), param(5+vj), 2);
+      }
+    }
     return par1 + par2 + par3 + nnsep1 + nnsep2 + 
       norm_prop_logitbound_varsim;
   }
@@ -186,23 +204,54 @@ inline double lognormal_logdens(const double& x, const double& m, const double& 
 }
 
 inline double gamma_logdens(const double& x, const double& a, const double& b){
-  return -lgamma(a) + a*log(b) + (a-1)*log(x) - b*x;
+  return -lgamma(a) + a*log(b) + (a-1.0)*log(x) - b*x;
+}
+
+inline double beta_logdens(const double& x, const double& a, const double& b, const double& c=1.0){
+  // unnormalized
+  return (a-1.0)*log(x) + (b-1.0)*log(c-x);
 }
 
 inline double calc_prior_logratio(int k, const arma::vec& new_param, 
-                            const arma::vec& param, int npars){
+                            const arma::vec& param, int npars, double maxv=2){
   
   if(npars == 1){
+    // space univar
     return 0;
-  } else {
-    double a = 2.0;
-    double b = 1.0/20.0;
-    double par1   = gamma_logdens(new_param(0), a, b) - gamma_logdens(param(0), a, b); // 
-    double par2   = gamma_logdens(new_param(2), a, b) - gamma_logdens(param(2), a, b); // 
-    double par3   = gamma_logdens(new_param(4), a, b) - gamma_logdens(param(4), a, b); // 
-    
-    return par1 + par2 + par3;
+  } 
+  if(npars == 3){
+    // spacetime univar
+    double a = 5.0;
+    double b = 1.0/5.0;
+    double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
+    double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
+    double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
+    return par1 + bpar1 + par2;
+  } 
+  if(npars == 4){
+    // spacetime bivar
+    double a = 5.0;
+    double b = 1.0/5.0;
+    double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
+    double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
+    double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
+    // parv is also here but not placing a prior (ie will be in unif bounds)
+    return par1 + bpar1 + par2;
+  } 
+  // multivar ~ not implemented fully
+  double a = 5.0;
+  double b = 1.0/5.0;
+  double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
+  double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
+  double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
+  double bpar2  = beta_logdens(new_param(3), 2.0, 2.0) - beta_logdens(param(3), 2.0, 2.0);
+  double par3   = gamma_logdens(new_param(4), a, b)    - gamma_logdens(param(4), a, b);
+  
+  double parv = 0;
+  for(int v=5; v<param.n_elem; v++){
+    parv += beta_logdens(new_param(v), 2.0, 2.0, maxv) - beta_logdens(param(v), 2.0, 2.0, maxv);
   }
+  return par1 + bpar1 + par2 + bpar2 + par3 + parv;
 }
 
 

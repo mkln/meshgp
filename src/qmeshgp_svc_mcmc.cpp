@@ -139,30 +139,38 @@ Rcpp::List qmeshgp_svc_mcmc(
   Rcpp::Rcout << "d=" << d << " q=" << q << ".\n";
   arma::mat set_unif_bounds = set_unif_bounds_in;
   
-  if((d == 2) & (q == 1)) {
-    npars = 1;
+  if(d == 2){
+    if(q == 1){
+      npars = 1; // phi
+    } else {
+      npars = 5;
+    }
   } else {
-    k = q * (q-1)/2;
-    npars = 5 + k; // 5 for xCovHUV + Dmat for variables (excludes sigmasq)
-    dlim = sqrt(.0+q);
-  } 
+    if(q > 2){
+      npars = 5;
+    } else {
+      npars = 3;
+    }
+  }
   
-  if(q > 1){
-    arma::mat vbounds = arma::zeros(k, 2);
+  k = q * (q-1)/2;
+  
+  Rcpp::Rcout << "Number of pars: " << npars << " plus " << k << " for multivariate\n"; 
+  npars += k; // for xCovHUV + Dmat for variables (excludes sigmasq)
+
+  arma::mat vbounds = arma::zeros(k, 2);
+  if(npars > 5){
+    // multivariate
+    dlim = sqrt(q+.0);
     vbounds.col(0) += 1e-5;
     vbounds.col(1) += dlim - 1e-5;
-    set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
+  } else {
+    vbounds.col(0) += 1e-5;
+    vbounds.col(1) += 1e5;
   }
   
-  /*
-  arma::vec active_pars = arma::ones(npars);
-  arma::mat active_pars_mat = arma::ones(npars, npars);
-  if((d == 2) & (q == 1)){
-    active_pars.subvec(1, active_pars.n_elem-1).fill(0);
-    active_pars_mat = active_pars_mat % (active_pars * active_pars.t());
-  }
-  */
-  
+  set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
+  Rcpp::Rcout << set_unif_bounds << endl;
   MeshGPsvc mesh = MeshGPsvc();
   bool recover_mesh = recover.length() > 0;
   if(recover_mesh){
@@ -314,7 +322,7 @@ Rcpp::List qmeshgp_svc_mcmc(
             throw 1;
           }
           
-          prior_logratio = calc_prior_logratio(k, new_param, param, npars);
+          prior_logratio = calc_prior_logratio(k, new_param, param, npars, dlim);
           jacobian       = calc_jacobian(k, new_param, param, npars);
           logaccept = new_loglik - current_loglik + prior_logratio + jacobian;
           
@@ -355,7 +363,7 @@ Rcpp::List qmeshgp_svc_mcmc(
           adapt(par_huvtransf_fwd(param, npars, dlim), sumparam, prodparam, paramsd, sd_param, m, accept_ratio); // **
         }
         
-        if((m>0) & (mcmc > 100) & !printall){
+        if((m>0) & (mcmc > 100)){
           if(!(m % (mcmc / 10))){
             //Rcpp::Rcout << paramsd << endl;
             accept_count_local = 0;
@@ -422,8 +430,8 @@ Rcpp::List qmeshgp_svc_mcmc(
         
         int itertime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-tick_mcmc ).count();
         
-        printf("%5d-th iteration [ %dms ] ~ tsq=%.4f ssq=%.4f \n    ", 
-               m+1, itertime, 1.0/mesh.tausq_inv, mesh.sigmasq);
+        printf("%5d-th iteration [ %dms ] ~ tsq=%.4f ssq=%.4f | MCMC acceptance %.2f%% (total: %.2f%%)\n", 
+               m+1, itertime, 1.0/mesh.tausq_inv, mesh.sigmasq, accept_ratio_local*100, accept_ratio*100);
         for(int pp=0; pp<npars; pp++){
           printf("theta%1d=%.4f ", pp, mesh.param_data.theta(pp));
         }
