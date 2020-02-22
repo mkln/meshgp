@@ -57,6 +57,10 @@ part_axis_parallel <- function(coords, Mv, n_threads) {
     .Call(`_meshgp_part_axis_parallel`, coords, Mv, n_threads)
 }
 
+part_axis_parallel_fixed <- function(coords, thresholds, n_threads) {
+    .Call(`_meshgp_part_axis_parallel_fixed`, coords, thresholds, n_threads)
+}
+
 mesh_graph_cpp <- function(layers_descr, Mv, rfc) {
     .Call(`_meshgp_mesh_graph_cpp`, layers_descr, Mv, rfc)
 }

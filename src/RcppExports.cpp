@@ -183,6 +183,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// part_axis_parallel_fixed
+arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<arma::vec>& thresholds, int n_threads);
+RcppExport SEXP _meshgp_part_axis_parallel_fixed(SEXP coordsSEXP, SEXP thresholdsSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::vec>& >::type thresholds(thresholdsSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(part_axis_parallel_fixed(coords, thresholds, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // mesh_graph_cpp
 Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, const arma::uvec& Mv, bool rfc);
 RcppExport SEXP _meshgp_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP rfcSEXP) {
@@ -302,6 +315,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_turbocolthreshold", (DL_FUNC) &_meshgp_turbocolthreshold, 2},
     {"_meshgp_kthresholds", (DL_FUNC) &_meshgp_kthresholds, 2},
     {"_meshgp_part_axis_parallel", (DL_FUNC) &_meshgp_part_axis_parallel, 3},
+    {"_meshgp_part_axis_parallel_fixed", (DL_FUNC) &_meshgp_part_axis_parallel_fixed, 3},
     {"_meshgp_mesh_graph_cpp", (DL_FUNC) &_meshgp_mesh_graph_cpp, 3},
     {"_meshgp_mvn", (DL_FUNC) &_meshgp_mvn, 3},
     {"_meshgp_xCovHUV_base", (DL_FUNC) &_meshgp_xCovHUV_base, 6},

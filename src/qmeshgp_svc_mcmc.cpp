@@ -166,7 +166,7 @@ Rcpp::List qmeshgp_svc_mcmc(
     vbounds.col(1) += dlim - 1e-5;
   } else {
     vbounds.col(0) += 1e-5;
-    vbounds.col(1) += 1e5;
+    vbounds.col(1).fill(arma::datum::inf);
   }
   
   set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);

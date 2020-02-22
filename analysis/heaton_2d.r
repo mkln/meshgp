@@ -43,18 +43,19 @@ Z <- matrix(1, nrow=nr)
 ybar <- mean(simdf$y, na.rm=T)
 y <- simdf$y - ybar
 
-mcmc_keep <- 200
-mcmc_burn <- 300
+mcmc_keep <- 500
+mcmc_burn <- 1000
 mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
-mesh_settings <- list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
+mesh_settings <- list(adapting=F, mcmcsd=.1, cache=T, cache_gibbs=F, 
                       reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=NULL)
 mesh_starting <- list(beta=NULL, tausq=0.1, sigmasq=1, theta=NULL, w=NULL)
 
 
 # MESH
-Mv <- c(125,75)#c(25,15) # 
+coords %>% apply(2, function(x) x %>% unique %>% length)
+Mv <- c(100,50)#c(25,15) # 
 (nr / prod(Mv) * ncol(Z))
 
 set.seed(1)

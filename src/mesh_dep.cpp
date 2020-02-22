@@ -236,6 +236,23 @@ arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n
   return resultmat;
 }
 
+
+//[[Rcpp::export]]
+arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<arma::vec>& thresholds, int n_threads){
+  Rcpp::Rcout << "~ Axis-parallel partitioning [fixed thresholds]... ";
+  arma::mat resultmat = arma::zeros(arma::size(coords));
+  
+  //#pragma omp parallel for num_threads(n_threads)
+  for(int j=0; j<coords.n_cols; j++){
+    //std::vector<double> cjv = arma::conv_to<std::vector<double> >::from(coords.col(j));
+    arma::vec cja = coords.col(j);
+    arma::vec thresholds_col = thresholds(j);
+    resultmat.col(j) = turbocolthreshold(coords.col(j), thresholds_col);
+  }
+  Rcpp::Rcout << "done." << endl;
+  return resultmat;
+}
+
 //[[Rcpp::export]]
 Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, 
                           const arma::uvec& Mv, bool rfc){

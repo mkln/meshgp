@@ -235,8 +235,8 @@ inline double calc_prior_logratio(int k, const arma::vec& new_param,
     double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
     double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
     double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
-    // parv is also here but not placing a prior (ie will be in unif bounds)
-    return par1 + bpar1 + par2;
+    double parv   = gamma_logdens(new_param(3), a, b)    - gamma_logdens(param(3), a, b);
+    return par1 + bpar1 + par2 + parv;
   } 
   // multivar ~ not implemented fully
   double a = 5.0;
