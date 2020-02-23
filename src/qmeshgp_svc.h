@@ -876,7 +876,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   */
   data.track_chol_fails = arma::zeros<arma::uvec>(kr_caching.n_elem);
   
-#pragma omp parallel for
+//***#pragma omp parallel for
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
     //bool calc_this_block = predicting == false? (block_ct_obs(u) > 0) : predicting;
@@ -896,6 +896,12 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
       xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true);
       arma::mat Kxxi = arma::inv_sympd( Kxx );
+      
+      arma::uvec nanxi = arma::find_nonfinite(Kxxi);
+      if(nanxi.n_elem > 0){
+        Rcpp::Rcout << "Error in invsympd(Kxx) at " << u << endl;
+        data.track_chol_fails(i) = 1;
+      }
       // +++++++++++++++++
       
       xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat);
@@ -912,6 +918,9 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       } catch (...) {
         data.track_chol_fails(i) = 1;
         K_cholcp_cache(i) = arma::eye(arma::size(Kcc));
+        
+        Rcpp::Rcout << "Error in inv chol symmatu (Kcc - Kcx Kxx Kxc) at " << u << endl;
+        
       }
       //Rcpp::Rcout << "krig: " << arma::size(K_cholcp_cache(i)) << "\n";
     }
@@ -920,7 +929,6 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   if(arma::all(data.track_chol_fails == 0)){
     data.cholfail = false;
     
-    Rcpp::Rcout << "check 2 " << endl;
   #pragma omp parallel for // **
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
