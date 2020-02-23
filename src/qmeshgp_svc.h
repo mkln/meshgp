@@ -1134,7 +1134,7 @@ void MeshGPsvc::gibbs_sample_tausq(){
     end = std::chrono::steady_clock::now();
     Rcpp::Rcout << "[gibbs_sample_tausq] " 
                 << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. " //<< " ... "
-                << aparam << " : " << bparam << " " << bcore << " --> " << tausq_inv
+                << aparam << " : " << bparam << " " << bcore << " --> " << 1.0/tausq_inv
                 << endl;
   }
 }

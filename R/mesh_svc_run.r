@@ -126,9 +126,9 @@ meshgp <- function(y, X, Z, coords, Mv,
                                         c(1e-5, Inf)), ncol=2)
       }
       if(stime_uni || stime_biv){
-        set_unif_bounds <- matrix(rbind(c(1e-5, Inf), 
+        set_unif_bounds <- matrix(rbind(c(1e-5, 1e5), 
                                         c(1e-5, 1-1e-5), 
-                                        c(1e-5, Inf)), ncol=2)
+                                        c(1e-5, 1e5)), ncol=2)
       }
     } else {
       set_unif_bounds <- prior$set_unif_bounds

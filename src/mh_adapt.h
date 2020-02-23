@@ -150,11 +150,11 @@ inline bool unif_bounds(arma::vec& par, const arma::mat& bounds){
     arma::rowvec ibounds = bounds.row(i);
     if( par(i) < ibounds(0) ){
       out_of_bounds = true;
-      par(i) = ibounds(0) + 1e-5;
+      par(i) = ibounds(0) + 1e-10;
     }
     if( par(i) > ibounds(1) ){
       out_of_bounds = true;
-      par(i) = ibounds(1) - 1e-5;
+      par(i) = ibounds(1) - 1e-10;
     }
   }
   return out_of_bounds;
@@ -222,7 +222,7 @@ inline double calc_prior_logratio(int k, const arma::vec& new_param,
   if(npars == 3){
     // spacetime univar
     double a = 5.0;
-    double b = 1.0/5.0;
+    double b = 1.0/20.0;
     double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
     double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
     double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
@@ -231,7 +231,7 @@ inline double calc_prior_logratio(int k, const arma::vec& new_param,
   if(npars == 4){
     // spacetime bivar
     double a = 5.0;
-    double b = 1.0/5.0;
+    double b = 1.0/20.0;
     double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
     double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
     double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
@@ -240,7 +240,7 @@ inline double calc_prior_logratio(int k, const arma::vec& new_param,
   } 
   // multivar ~ not implemented fully
   double a = 5.0;
-  double b = 1.0/5.0;
+  double b = 1.0/20.0;
   double par1   = gamma_logdens(new_param(0), a, b)    - gamma_logdens(param(0), a, b); // 
   double bpar1  = beta_logdens(new_param(1), 2.0, 2.0) - beta_logdens(param(1), 2.0, 2.0);
   double par2   = gamma_logdens(new_param(2), a, b)    - gamma_logdens(param(2), a, b);
