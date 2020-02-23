@@ -834,8 +834,9 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   message("[get_cond_comps_loglik_w] start.");
   
   //arma::field<arma::mat> K_coords_cache(coords_caching.n_elem);
-  arma::field<arma::mat> K_parents_cache(parents_caching.n_elem);
+  //arma::field<arma::mat> K_parents_cache(parents_caching.n_elem);
   arma::field<arma::mat> K_cholcp_cache(kr_caching.n_elem);
+  arma::field<arma::mat> w_cond_mean_cache(kr_caching.n_elem); // +++++++++
   //arma::field<arma::mat> Kcp_cache(kr_caching.n_elem);
   
   arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
@@ -859,7 +860,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       xCovHUV_inplace(K_coords_cache(i), coords, indexing(u), indexing(u), cparams, Dmat, true);
     }
   }
-  
+  /* // -------------------------
 #pragma omp parallel for // **
   for(int i=0; i<parents_caching.n_elem; i++){
     int u = parents_caching(i); // layer name of ith representative
@@ -872,7 +873,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       //Rcpp::Rcout << "parents: " << arma::size(K_parents_cache(i)) << "\n";
     }
   }
-  
+  */
   data.track_chol_fails = arma::zeros<arma::uvec>(kr_caching.n_elem);
   
 #pragma omp parallel for
@@ -885,16 +886,28 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       arma::uvec cx = arma::find( coords_caching == u_cached_ix );
       arma::mat Kcc = K_coords_cache(cx(0));
       
-      int p_cached_ix = parents_caching_ix(u);
-      arma::uvec px = arma::find( parents_caching == p_cached_ix );
-      arma::mat Kxxi = K_parents_cache(px(0)); //arma::inv_sympd(  Kpp(parents_coords(u), parents_coords(u), theta, true) );
-      //arma::mat Kxxi = arma::inv_sympd( Kpp(parents_coords(u), parents_coords(u), theta, true) );
+      // -----------------
+      //int p_cached_ix = parents_caching_ix(u);
+      //arma::uvec px = arma::find( parents_caching == p_cached_ix );
+      //arma::mat Kxxi = K_parents_cache(px(0)); //arma::inv_sympd(  Kpp(parents_coords(u), parents_coords(u), theta, true) );
+      // -----------------
+      
+      // +++++++++++++++++
+      arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
+      xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true);
+      arma::mat Kxxi = arma::inv_sympd( Kxx );
+      // +++++++++++++++++
       
       xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat);
       
+      // +++++++++++++++++
+      w_cond_mean_cache(i) = Kcp_cache(i) * Kxxi;
+      // +++++++++++++++++
+      
       try {
         K_cholcp_cache(i) = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
-          Kcc - Kcp_cache(i) * Kxxi * Kcp_cache(i).t()
+          //Kcc - Kcp_cache(i) * Kxxi * Kcp_cache(i).t() // -----------
+          Kcc - w_cond_mean_cache(i) * Kcp_cache(i).t() // -----------
         ) , "lower")));
       } catch (...) {
         data.track_chol_fails(i) = 1;
@@ -907,6 +920,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   if(arma::all(data.track_chol_fails == 0)){
     data.cholfail = false;
     
+    Rcpp::Rcout << "check 2 " << endl;
   #pragma omp parallel for // **
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
@@ -919,15 +933,16 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
         arma::mat cond_mean_K, cond_mean, cond_cholprec;//, w_parents;
         
         if( parents(u).n_elem > 0 ){
-          int p_cached_ix = parents_caching_ix(u);
-          arma::uvec px = arma::find( parents_caching == p_cached_ix );
-          arma::mat Kxxi = K_parents_cache(px(0)); //arma::inv_sympd(  Kpp(parents_coords(u), parents_coords(u), theta, true) );
+          // ---------------
+          //int p_cached_ix = parents_caching_ix(u);
+          //arma::uvec px = arma::find( parents_caching == p_cached_ix );
+          //arma::mat Kxxi = K_parents_cache(px(0)); //arma::inv_sympd(  Kpp(parents_coords(u), parents_coords(u), theta, true) );
           
           int kr_cached_ix = kr_caching_ix(u);
           arma::uvec cpx = arma::find(kr_caching == kr_cached_ix);
           
-          arma::mat Kcx = Kcp_cache(cpx(0));//Kpp(coords_blocks(u), parents_coords(u), theta);
-          cond_mean_K = Kcx * Kxxi;
+          //arma::mat Kcx = Kcp_cache(cpx(0));//Kpp(coords_blocks(u), parents_coords(u), theta);
+          cond_mean_K = w_cond_mean_cache(cpx(0));// Kcx * Kxxi; // +++++++++++
           cond_cholprec = K_cholcp_cache(cpx(0));//arma::inv(arma::trimatl(arma::chol( arma::symmatu(Kcc - cond_mean_K * Kcx.t()) , "lower")));
         } else {
           //Rcpp::Rcout << "no parents " << endl;
