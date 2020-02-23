@@ -899,6 +899,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       
       arma::uvec nanxi = arma::find_nonfinite(Kxxi);
       if(nanxi.n_elem > 0){
+        Rcpp::Rcout << data.sigmasq << endl;
         Rcpp::Rcout << "Error in invsympd(Kxx) at " << u << endl;
         data.track_chol_fails(i) = 1;
         throw 1;
@@ -1108,6 +1109,11 @@ void MeshGPsvc::gibbs_sample_sigmasq(){
   
   double old_new_ratio = oldsigmasq / sigmasq;
   
+  if(isnan(old_new_ratio)){
+    Rcpp::Rcout << oldsigmasq << " -> " << sigmasq << " ? " << bparam << endl;
+    Rcpp::Rcout << "Error with sigmasq" << endl;
+    throw 1;
+  }
   // change all K
 #pragma omp parallel for
   for(int i=0; i<n_blocks; i++){
