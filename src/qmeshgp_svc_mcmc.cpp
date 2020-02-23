@@ -158,19 +158,21 @@ Rcpp::List qmeshgp_svc_mcmc(
   Rcpp::Rcout << "Number of pars: " << npars << " plus " << k << " for multivariate\n"; 
   npars += k; // for xCovHUV + Dmat for variables (excludes sigmasq)
 
-  arma::mat vbounds = arma::zeros(k, 2);
-  if(npars > 5){
-    // multivariate
-    dlim = sqrt(q+.0);
-    vbounds.col(0) += 1e-5;
-    vbounds.col(1) += dlim - 1e-5;
-  } else {
-    vbounds.col(0) += 1e-5;
-    vbounds.col(1) += 1e5;//.fill(arma::datum::inf);
+  if(set_unif_bounds.n_rows < npars){
+    arma::mat vbounds = arma::zeros(k, 2);
+    if(npars > 5){
+      // multivariate
+      dlim = sqrt(q+.0);
+      vbounds.col(0) += 1e-5;
+      vbounds.col(1) += dlim - 1e-5;
+    } else {
+      vbounds.col(0) += 1e-5;
+      vbounds.col(1) += set_unif_bounds(0, 1);//.fill(arma::datum::inf);
+    }
+    set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
   }
-  
-  set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
   Rcpp::Rcout << set_unif_bounds << endl;
+  
   MeshGPsvc mesh = MeshGPsvc();
   bool recover_mesh = recover.length() > 0;
   if(recover_mesh){
@@ -300,8 +302,8 @@ Rcpp::List qmeshgp_svc_mcmc(
         
         // theta
         arma::vec new_param = param;
-        new_param = par_huvtransf_back(par_huvtransf_fwd(param, npars, dlim) + 
-          paramsd * arma::randn(npars), npars, dlim);
+        new_param = par_huvtransf_back(par_huvtransf_fwd(param, set_unif_bounds) + 
+          paramsd * arma::randn(npars), set_unif_bounds);
         
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         
@@ -322,10 +324,17 @@ Rcpp::List qmeshgp_svc_mcmc(
             throw 1;
           }
           
-          prior_logratio = calc_prior_logratio(k, new_param, param, npars, dlim);
-          jacobian       = calc_jacobian(k, new_param, param, npars);
+          //prior_logratio = calc_prior_logratio(k, new_param, param, npars, dlim);
+          jacobian       = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + //prior_logratio + 
             jacobian;
+          
+          if(isnan(logaccept)){
+            Rcpp::Rcout << new_param.t() << endl;
+            Rcpp::Rcout << param.t() << endl;
+            Rcpp::Rcout << new_loglik << " " << current_loglik << " " << jacobian << endl;
+            throw 1;
+          }
           
           accepted = do_I_accept(logaccept);
         } else {
@@ -361,7 +370,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         accept_ratio_local = accept_count_local/propos_count_local;
         
         if(adapting){
-          adapt(par_huvtransf_fwd(param, npars, dlim), sumparam, prodparam, paramsd, sd_param, m, accept_ratio); // **
+          adapt(par_huvtransf_fwd(param, set_unif_bounds), sumparam, prodparam, paramsd, sd_param, m, accept_ratio); // **
         }
         
         if((m>0) & (mcmc > 100)){

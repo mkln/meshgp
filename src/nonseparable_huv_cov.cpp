@@ -66,6 +66,7 @@ double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q
         double beta_psi1 = params(2);
         double c_phi1    = params(3);
         double psi2_sqrt = sqrt(v + 1.0);//sqrt_fpsi(v,           a_psi2, beta_psi2); // alpha_psi2=0.5
+        
         double psi1_sqrt = sqrt_fpsi(u/psi2_sqrt, a_psi1, beta_psi1); // alpha_psi1=0.5
         double phi1      = fphi(h/psi1_sqrt, c_phi1); // gamma_phi1=0.5
         

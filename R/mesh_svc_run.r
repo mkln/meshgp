@@ -114,21 +114,23 @@ meshgp <- function(y, X, Z, coords, Mv,
       start_theta  <- starting$theta
     }
     
+    toplim <- 1e5
+    btmlim <- 1e-5
     if(is.null(prior$set_unif_bounds)){
       if(space_uni){
-        set_unif_bounds <- matrix(c(1e-5, Inf), ncol=2)
+        set_unif_bounds <- matrix(c(btmlim, toplim), ncol=2)
       } 
       if(space_mul || stime_mul){
-        set_unif_bounds <- matrix(rbind(c(1e-5, Inf), 
-                                        c(1e-5, 1-1e-5), 
-                                        c(1e-5, Inf), 
-                                        c(1e-5, 1-1e-5), 
-                                        c(1e-5, Inf)), ncol=2)
+        set_unif_bounds <- matrix(rbind(c(btmlim, toplim), 
+                                        c(btmlim, 1-btmlim), 
+                                        c(btmlim, toplim), 
+                                        c(btmlim, 1-btmlim), 
+                                        c(btmlim, toplim)), ncol=2)
       }
       if(stime_uni || stime_biv){
-        set_unif_bounds <- matrix(rbind(c(1e-5, 1e5), 
-                                        c(1e-5, 1-1e-5), 
-                                        c(1e-5, 1e5)), ncol=2)
+        set_unif_bounds <- matrix(rbind(c(btmlim, 1e5), 
+                                        c(btmlim, 1-btmlim), 
+                                        c(btmlim, 1e5)), ncol=2)
       }
     } else {
       set_unif_bounds <- prior$set_unif_bounds

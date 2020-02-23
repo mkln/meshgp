@@ -69,6 +69,10 @@ mvn <- function(n, mu, sigma) {
     .Call(`_meshgp_mvn`, n, mu, sigma)
 }
 
+vec_to_symmat <- function(x) {
+    .Call(`_meshgp_vec_to_symmat`, x)
+}
+
 xCovHUV_base <- function(h, u, v, params, q, dim) {
     .Call(`_meshgp_xCovHUV_base`, h, u, v, params, q, dim)
 }

@@ -2,6 +2,7 @@
 
 using namespace std;
 
+//[[Rcpp::export]]
 arma::mat vec_to_symmat(const arma::vec& x);
 
 //[[Rcpp::export]]

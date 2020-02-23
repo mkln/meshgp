@@ -35,8 +35,8 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
       int u_prop = names(k)-1;
       if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
         // these are knots so designed, no risk of making mistakes based on tolerance here
-        // unless there are knots closer than 1e-10 apart which should be considered different!
-        bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-10);
+        // unless there are knots closer than 1e-4 apart which should be considered different!
+        bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
         if(same){
           result(u_target) = u_prop;
           foundsame = true;
@@ -97,8 +97,8 @@ arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
             ){ 
           if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
             // these are knots so designed, no risk of making mistakes based on tolerance here
-            // unless there are knots closer than 1e-10 apart which should be considered different!
-            bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-10);
+            // unless there are knots closer than 1e-4 apart which should be considered different!
+            bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
             if(same){
               result(u_target) = u_prop;
               foundsame = true;
@@ -162,8 +162,8 @@ arma::vec caching_pairwise_compare_uci(const arma::mat& coords,
       ){ 
         if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
           // these are knots so designed, no risk of making mistakes based on tolerance here
-          // unless there are knots closer than 1e-10 apart which should be considered different!
-          bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-10);
+          // unless there are knots closer than 1e-4 apart which should be considered different!
+          bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
           if(same){
             result(u_target) = u_prop;
             foundsame = true;
