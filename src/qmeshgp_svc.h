@@ -901,6 +901,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       if(nanxi.n_elem > 0){
         Rcpp::Rcout << "Error in invsympd(Kxx) at " << u << endl;
         data.track_chol_fails(i) = 1;
+        throw 1;
       }
       // +++++++++++++++++
       
@@ -994,6 +995,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
     
   } else {
     data.cholfail = true;
+    throw 1;
   }
   
   if(verbose){
