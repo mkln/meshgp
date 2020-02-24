@@ -48,7 +48,7 @@ mcmc_burn <- 1000
 mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
-mesh_settings <- list(adapting=F, mcmcsd=.1, cache=T, cache_gibbs=F, 
+mesh_settings <- list(adapting=T, mcmcsd=.1, cache=T, cache_gibbs=F, 
                       reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=NULL)
 mesh_starting <- list(beta=NULL, tausq=0.1, sigmasq=1, theta=NULL, w=NULL)
 
@@ -69,7 +69,6 @@ mesh_time <- system.time({
                     dry_run     = F,
                     recover     = list())
 })
-# 393.786   0.625  38.652 
 
 beta_mcmc <- meshout$beta_mcmc
 sigmasq_mcmc <- meshout$sigmasq_mcmc

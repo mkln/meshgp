@@ -98,6 +98,7 @@ Rcpp::List qmeshgp_svc_mcmc(
     int mcmc_thin = 1,
     
     int num_threads = 1,
+    int setseed=-1,
     
     bool adapting=false,
     bool cache=false,
@@ -114,6 +115,7 @@ Rcpp::List qmeshgp_svc_mcmc(
     bool sample_theta=true,
     bool sample_w=true){
   
+  srand(setseed);
   Rcpp::Rcout << "Preparing for MCMC." << endl;
   omp_set_num_threads(num_threads);
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();

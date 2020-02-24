@@ -10,7 +10,7 @@ using namespace std;
 
 
 //[[Rcpp::export]]
-arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na=-1, int pred=2){
+arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na=-1, int pred=4){
   
   arma::uvec locs = arma::find( (x != na) % (x != pred) );
   arma::vec xlocs = x.elem(locs);
@@ -73,12 +73,12 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
           // 1xJ
           arma::mat col_ax2 = Col2.submat(i-1,    0, 
                                           i-1, Jmax); 
-          Col2.row(i-1) = arma::trans(noseqdup(arma::vectorise(col_ax2), has_changed, maxg, -1, 2));
+          Col2.row(i-1) = arma::trans(noseqdup(arma::vectorise(col_ax2), has_changed, maxg, -1, 4));
           
           // Ix1
           arma::mat col_ax1 = Col2.submat(   0, j-1,
                                           Imax, j-1); 
-          Col2.col(j-1) = noseqdup(arma::vectorise(col_ax1), has_changed, maxg, -1, 2);
+          Col2.col(j-1) = noseqdup(arma::vectorise(col_ax1), has_changed, maxg, -1, 4);
           
         }
       }
@@ -137,7 +137,7 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
                                               i-1, j-1, Hmax); 
             
             //Rcpp::Rcout << "2" << endl;
-            col_ax1.subcube(0, 0, 0, 0, 0, Hmax) = noseqdup(arma::vectorise(col_ax1), has_changed, maxg, -1, 2);
+            col_ax1.subcube(0, 0, 0, 0, 0, Hmax) = noseqdup(arma::vectorise(col_ax1), has_changed, maxg, -1, 8);
             
             //Rcpp::Rcout << "3" << endl;
             Col3.subcube(i-1, j-1, 0, 
@@ -148,7 +148,7 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
             arma::cube col_ax2 = Col3.subcube(i-1,    0, h-1,
                                               i-1, Jmax, h-1); 
             //Rcpp::Rcout << "5 " << arma::size(col_ax2) << " " << Jmax << endl;
-            col_ax2.subcube(0, 0, 0, 0, Jmax, 0) = noseqdup(arma::vectorise(col_ax2), has_changed, maxg, -1, 2);
+            col_ax2.subcube(0, 0, 0, 0, Jmax, 0) = noseqdup(arma::vectorise(col_ax2), has_changed, maxg, -1, 8);
             
             //Rcpp::Rcout << "6" << endl;
             Col3.subcube(i-1, 0,    h-1, 
@@ -158,7 +158,7 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
             arma::cube col_ax3 = Col3.subcube(   0, j-1, h-1, 
                                               Imax, j-1, h-1); 
             //Rcpp::Rcout << "8" << endl;
-            col_ax3.subcube(0, 0, 0, Imax, 0, 0) = noseqdup(arma::vectorise(col_ax3), has_changed, maxg, -1, 2);
+            col_ax3.subcube(0, 0, 0, Imax, 0, 0) = noseqdup(arma::vectorise(col_ax3), has_changed, maxg, -1, 8);
             //Rcpp::Rcout << "9" << endl;
             Col3.subcube(0,    j-1, h-1, 
                          Imax, j-1, h-1) = col_ax3;

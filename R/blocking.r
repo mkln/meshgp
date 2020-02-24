@@ -124,28 +124,24 @@ blocking_xd <- function(coords, d, type="mesh", L=NULL){
   stop(glue::glue("No blocking performed. Right type '{type}'?"))
 }
 
-
-
 tessellation_axis_parallel <- function(coordsmat, Mv, n_threads){
-
   blocks_by_coord <- part_axis_parallel(coordsmat, Mv, n_threads) %>% apply(2, factor)
   colnames(blocks_by_coord) <- paste0("L", 1:ncol(coordsmat))
   
   block <- blocks_by_coord %>% 
     as.data.frame() %>% as.list() %>% interaction()
   blockdf <- data.frame(blocks_by_coord %>% apply(2, as.numeric), block=as.numeric(block))
-  result <- cbind(coordsmat, blockdf) %>% 
-                mutate(color = (L1+L2) %% 2)
-  
-  if(ncol(coords)==2){
+
+  if(ncol(coordsmat)==2){
+    result <- cbind(coordsmat, blockdf) %>% 
+      mutate(color = ((L1-1)*2+(L2-1)) %% 4)
     return(result)
   } else {
-    result %<>% mutate(colorswitch = L3 %% 2 == 0) %>% mutate(color = ifelse(colorswitch, color, 1-color))
+    result <- cbind(coordsmat, blockdf) %>% 
+      mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
     return(result)
   }
-
 }
-
 
 tessellation_axis_parallel_fix <- function(coordsmat, thresholds, n_threads){
   
