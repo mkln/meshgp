@@ -2,6 +2,8 @@
 #define MGP_UTILS
 
 #include "RcppArmadillo.h"
+
+
 using namespace std;
 
 arma::vec armarowsum(const arma::mat& x);

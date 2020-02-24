@@ -16,6 +16,14 @@
 
 using namespace std;
 
+
+#include <RcppArmadilloExtensions/sample.h>
+
+arma::uvec ashuffle(const arma::uvec& x){
+  //  Rcpp::RNGScope scope;
+  return Rcpp::RcppArmadillo::sample(x, x.n_elem, false); 
+}
+
 const double hl2pi = -.5 * log(2 * M_PI);
 
 class MeshGPsvc {
@@ -264,6 +272,9 @@ MeshGPsvc::MeshGPsvc(
   n_gibbs_groups      = block_groups_labels.n_elem;
   n_blocks            = block_names.n_elem;
   
+  Rcpp::Rcout << n_gibbs_groups << " groups for gibbs " << endl;
+  //Rcpp::Rcout << block_groups_labels << endl;
+  
   na_ix_all   = arma::find_finite(y.col(0));
   y_available = y.rows(na_ix_all);
   X_available = X.rows(na_ix_all); 
@@ -446,6 +457,7 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   Vi                  = .01 * arma::eye(p,p);
   bprim               = arma::zeros(p);
   Vim                 = Vi * bprim;
+  
   
   printf("8 ");
   if(dd == 2){
@@ -1433,6 +1445,7 @@ void MeshGPsvc::gibbs_sample_w_omp(){
   
 }
 
+
 void MeshGPsvc::gibbs_sample_w_omp_nocache(){
   if(verbose & debug){
     Rcpp::Rcout << "[gibbs_sample_w_omp_nocache] " << endl;
@@ -1443,15 +1456,17 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
     Rcpp::Rcout << "[gibbs_sample_w_omp_nocache] sampling big stdn matrix size " << n << "," << q << endl;
   }
   
+  Rcpp::RNGScope scope;
   arma::mat rand_norm_mat = arma::randn(coords.n_rows, q);
-  
-  ///arma::umat rand_norm_tracker = arma::zeros<arma::umat>(coords.n_rows, n_gibbs_groups);
-  //arma::umat rand_child_tracker = arma::zeros<arma::umat>(coords.n_rows, n_gibbs_groups);
+  //Rcpp::Rcout << rand_norm_mat.head_rows(10) << endl << " ? " << endl;
   
   start_overall = std::chrono::steady_clock::now();
   
-  for(int g=0; g<n_gibbs_groups; g++){
-#pragma omp parallel for
+  arma::uvec gibbs_groups_reorder = ashuffle(arma::regspace<arma::uvec>(0, n_gibbs_groups-1));
+  
+  for(int go=0; go<n_gibbs_groups; go++){
+    int g = gibbs_groups_reorder(go);
+    #pragma omp parallel for
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
@@ -1506,7 +1521,6 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
         arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec);
         
         //rand_norm_tracker(indexing(u), ug) += 1;
-        
         //Rcpp::Rcout << w_temp.n_elem/q << " " << q << "\n";
         w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
       } 

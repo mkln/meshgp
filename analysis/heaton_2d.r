@@ -49,7 +49,7 @@ mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
 mesh_settings <- list(adapting=T, mcmcsd=.1, cache=T, cache_gibbs=F, 
-                      reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=NULL)
+                      reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=2020)
 mesh_starting <- list(beta=NULL, tausq=0.1, sigmasq=1, theta=NULL, w=NULL)
 
 

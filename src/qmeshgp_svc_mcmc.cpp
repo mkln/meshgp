@@ -115,7 +115,6 @@ Rcpp::List qmeshgp_svc_mcmc(
     bool sample_theta=true,
     bool sample_w=true){
   
-  srand(setseed);
   Rcpp::Rcout << "Preparing for MCMC." << endl;
   omp_set_num_threads(num_threads);
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -139,6 +138,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   int npars;
   double dlim=0;
   Rcpp::Rcout << "d=" << d << " q=" << q << ".\n";
+  Rcpp::Rcout << "Lower and upper bounds for priors:\n";
   arma::mat set_unif_bounds = set_unif_bounds_in;
   
   if(d == 2){
