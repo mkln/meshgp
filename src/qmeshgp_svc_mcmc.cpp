@@ -302,6 +302,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         propos_count_local++;
         
         // theta
+        Rcpp::RNGScope scope;
         arma::vec new_param = param;
         new_param = par_huvtransf_back(par_huvtransf_fwd(param, set_unif_bounds) + 
           paramsd * arma::randn(npars), set_unif_bounds);
