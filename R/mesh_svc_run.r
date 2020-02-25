@@ -245,8 +245,8 @@ meshgp <- function(y, X, Z, coords, Mv,
   }
   
   if(!dry_run){
-    cat("Setting seed: ", seeded, "\n")
-    set.seed(seeded)
+    #cat("Setting seed: ", seeded, "\n")
+    #set.seed(seeded)
     comp_time <- system.time({
       results <- qmeshgp_svc_mcmc(y, X, Z, coords, blocking,
                               
@@ -268,7 +268,6 @@ meshgp <- function(y, X, Z, coords, Mv,
                               mcmc_keep, mcmc_burn, mcmc_thin,
                               
                               num_threads,
-                              seeded,
                               
                               mcmc_adaptive, # adapting
                               mcmc_cache, # use cache

@@ -98,7 +98,6 @@ Rcpp::List qmeshgp_svc_mcmc(
     int mcmc_thin = 1,
     
     int num_threads = 1,
-    int setseed=-1,
     
     bool adapting=false,
     bool cache=false,
