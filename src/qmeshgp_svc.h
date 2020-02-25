@@ -1250,6 +1250,7 @@ void MeshGPsvc::gibbs_sample_beta(){
   arma::mat Sigma_chol_Bcoeff = arma::inv(arma::trimatl(Si_chol));
   
   arma::mat Xprecy = Vim + tausq_inv * X_available.t() * ( y_available - Zw.rows(na_ix_all));// + ywmeandiff );
+  Rcpp::RNGScope scope;
   Bcoeff = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy + arma::randn(p));
   
   if(verbose){
@@ -1322,6 +1323,7 @@ void MeshGPsvc::gibbs_sample_tausq(){
   double aparam = 2.01 + n/2.0;
   double bparam = 1.0/( 1.0 + .5 * bcore );
   
+  Rcpp::RNGScope scope;
   tausq_inv = R::rgamma(aparam, bparam);
   
   if(verbose){
@@ -1349,6 +1351,8 @@ void MeshGPsvc::gibbs_sample_w_omp(){
   if(verbose & debug){
     Rcpp::Rcout << "[gibbs_sample_w_omp] sampling big stdn matrix size " << n << "," << q << endl;
   }
+  
+  Rcpp::RNGScope scope;
   arma::mat rand_norm_mat = arma::randn(coords.n_rows, q);
   
   arma::field<arma::mat> Sigi_chol_cached(gibbs_caching.n_elem);

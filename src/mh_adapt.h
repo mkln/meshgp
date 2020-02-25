@@ -18,6 +18,7 @@ inline bool do_I_accept(double logaccept){ //, string name_accept, string name_c
       acceptj = exp(logaccept);
     }
   }
+  Rcpp::RNGScope scope;
   double u = arma::randu();
   if(u < acceptj){
     return true;
