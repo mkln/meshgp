@@ -1349,7 +1349,7 @@ void MeshGPsvc::gibbs_sample_w_omp(){
   
   // keep seed
   if(verbose & debug){
-    Rcpp::Rcout << "[gibbs_sample_w_omp] sampling big stdn matrix size " << n << "," << q << endl;
+    Rcpp::Rcout << "[gibbs_sample_w_omp] sampling big stdn matrix size " << coords.n_rows << "," << q << endl;
   }
   
   Rcpp::RNGScope scope;

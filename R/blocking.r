@@ -167,5 +167,3 @@ tessellation_axis_parallel_fix <- function(coordsmat, thresholds, n_threads){
 
 
 
-
-

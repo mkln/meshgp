@@ -129,6 +129,8 @@ Rcpp::List qmeshgp_svc_mcmc(
   
   bool verbose_mcmc = printall;
   
+  double tempr=1;
+  
   int n = coords.n_rows;
   int d = coords.n_cols;
   int q = Z.n_cols;
@@ -210,7 +212,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   mesh.get_loglik_comps_w( mesh.alter_data );
   
   arma::vec param = mesh.param_data.theta;
-  double current_loglik = mesh.param_data.loglik_w;
+  double current_loglik = tempr*mesh.param_data.loglik_w;
   if(verbose & debug){
     Rcpp::Rcout << "starting from ll: " << current_loglik << endl; 
   }
@@ -261,7 +263,7 @@ Rcpp::List qmeshgp_svc_mcmc(
       if(sample_w){
         mesh.gibbs_sample_w();
         mesh.get_loglik_w(mesh.param_data);
-        current_loglik = mesh.param_data.loglik_w;
+        current_loglik = tempr*mesh.param_data.loglik_w;
       }
       
       end = std::chrono::steady_clock::now();
@@ -279,7 +281,7 @@ Rcpp::List qmeshgp_svc_mcmc(
       start = std::chrono::steady_clock::now();
       if(sample_sigmasq){
         mesh.gibbs_sample_sigmasq();
-        current_loglik = mesh.param_data.loglik_w;
+        current_loglik = tempr*mesh.param_data.loglik_w;
         //Rcpp::Rcout << "loglik: " << current_loglik << "\n";
         //mesh.get_loglik_comps_w( mesh.param_data );
         //current_loglik = mesh.param_data.loglik_w;
@@ -318,8 +320,8 @@ Rcpp::List qmeshgp_svc_mcmc(
         double jacobian = 0;
         
         if(!mesh.alter_data.cholfail){
-          new_loglik = mesh.alter_data.loglik_w;
-          current_loglik = mesh.param_data.loglik_w;
+          new_loglik = tempr*mesh.alter_data.loglik_w;
+          current_loglik = tempr*mesh.param_data.loglik_w;
           
           if(isnan(current_loglik)){
             Rcpp::Rcout << "At nan loglik: error. \n";

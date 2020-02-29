@@ -10,21 +10,7 @@ meshgp <- function(y, X, Z, coords, Mv,
                    dry_run     = F,
                    recover     = list()
                    ){
-  if(F){
-    mcmc        = list(keep=10, burn=0, thin=1)
-    num_threads = 11
-    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
-                       reference_full_coverage=F, verbose=T, debug=T, printall=F, seed=NULL)
-    prior       = list(set_unif_bounds=matrix(rbind(c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf), c(1e-5, 1-1e-5), c(1e-5, Inf)), ncol=2))
-    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
-    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
-    dry_run     = F
-    recover     = list()
-    X <- X_full
-    Z <- Z_full
-    y <- y_full
-  }
-  
+
   # init
   cat(" Bayesian MeshGP model with cubic tessellation & cubic mesh (Q-MGP)\n
     o --> o --> o
@@ -245,8 +231,6 @@ meshgp <- function(y, X, Z, coords, Mv,
   }
   
   if(!dry_run){
-    #cat("Setting seed: ", seeded, "\n")
-    #set.seed(seeded)
     comp_time <- system.time({
       results <- qmeshgp_svc_mcmc(y, X, Z, coords, blocking,
                               

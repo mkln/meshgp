@@ -38,37 +38,29 @@ coords <- simdf %>% select(Var1, Var2) %>% as.matrix() %>%
   add(.5)
 
 nr <- nrow(coords)
-X <- coords#matrix(1, nrow=nr) 
+X <- cbind(1, coords)#matrix(1, nrow=nr) 
 Z <- matrix(1, nrow=nr)
-ybar <- mean(simdf$y, na.rm=T)
-y <- simdf$y - ybar
+
+y <- simdf$y
+ybar <- 0
 
 mcmc_keep <- 500
 mcmc_burn <- 1000
 mcmc_thin <- 2
 
 mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
-mesh_settings <- list(adapting=T, mcmcsd=.1, cache=T, cache_gibbs=F, 
-                      reference_full_coverage=F, verbose=F, debug=F, printall=T, seed=2020)
-mesh_starting <- list(beta=NULL, tausq=0.1, sigmasq=1, theta=NULL, w=NULL)
-
 
 # MESH
 coords %>% apply(2, function(x) x %>% unique %>% length)
-Mv <- c(100,50)#c(25,15) # 
+Mv <- c(100, 30)#c(25,30) # 
 (nr / prod(Mv) * ncol(Z))
 
 set.seed(1)
 mesh_time <- system.time({
   meshout <- meshgp(y, X, Z, coords, Mv=Mv, 
                     mcmc = mesh_mcmc,
-                    num_threads = 11,
-                    settings    = mesh_settings,
-                    starting    = mesh_starting,
-                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T),
-                    dry_run     = F,
-                    recover     = list())
-})
+                    num_threads = 60)
+}) 
 
 beta_mcmc <- meshout$beta_mcmc
 sigmasq_mcmc <- meshout$sigmasq_mcmc

@@ -40,8 +40,6 @@ inline void adapt(const arma::vec& param,
   sumparam += param;
   prodparam += param * param.t();
   
-  
-  
   sd_param(mc+1) = sd_param(mc) + pow(mc+1.0, -g_exp) * (accept_ratio - tau_accept);
   //clog << sd_param.col(j).row(mc) << endl;
   if(sd_param(mc+1) > exp(rho_max)){
@@ -98,28 +96,6 @@ inline arma::vec par_huvtransf_fwd(arma::vec par, const arma::mat& set_unif_boun
     par(j) = logit(par(j), set_unif_bounds(j, 1));
   }
   return par;
-  /*
-  if(npars == 1){
-    par(0) = logit(par(0), set_unif_bounds(0, 1));//log(par(0));
-    return par;
-  } else {
-    // apanasovich&genton huv nonsep 
-    par(0) = logit(par(0), set_unif_bounds(0, 1));//log(par(0));
-    par(1) = logit(par(1), set_unif_bounds(1, 1));
-    par(2) = logit(par(2), set_unif_bounds(2, 1));//log(par(2));
-    if(npars == 4){
-      par(3) = logit(par(3), set_unif_bounds(3, 1));//log(par(3)); // because we are setting a_psi2=1 and beta_psi2=1
-    }
-    if(npars > 4){
-      // multivariate
-      par(3) = logit(par(3));
-      par(4) = log(par(4));
-      for(int j=5; j<par.n_elem; j++){
-        par(j) = logit(par(j), l);
-      }
-    }
-    return par;
-  }*/
 }
 
 inline arma::vec par_huvtransf_back(arma::vec par, const arma::mat& set_unif_bounds){
@@ -127,29 +103,6 @@ inline arma::vec par_huvtransf_back(arma::vec par, const arma::mat& set_unif_bou
     par(j) = logistic(par(j), set_unif_bounds(j, 1));
   }
   return par;
-  /*
-  if(npars == 1){
-    par(0) = logistic(par(0), set_unif_bounds(0, 1));//exp(par(0));
-    return par;
-  } else {
-    // apanasovich&genton huv nonsep 
-    par(0) = logistic(par(0), set_unif_bounds(0, 1));//exp(par(0));
-    par(1) = logistic(par(1), set_unif_bounds(1, 1));
-    par(2) = logistic(par(2), set_unif_bounds(2, 1));//exp(par(2));
-    
-    if(npars == 4){
-      par(3) = logistic(par(3), set_unif_bounds(3, 1));//exp(par(3)); // because we are setting a_psi2=1 and beta_psi2=1
-    }
-    if(npars > 4){
-      // multivariate
-      par(3) = logistic(par(3));
-      par(4) = exp(par(4));
-      for(int j=5; j<par.n_elem; j++){
-        par(j) = logistic(par(j), l);
-      }
-    }
-    return par;
-  }*/
 }
 
 inline bool unif_bounds(arma::vec& par, const arma::mat& bounds){
@@ -200,33 +153,6 @@ inline double calc_jacobian(const arma::vec& new_param, const arma::vec& param,
     jac += normal_proposal_logitscale(new_param(j), param(j), set_unif_bounds(j, 1));
   }
   return jac;
-  /*
-  if(npars == 1){
-    return normal_proposal_logitscale(new_param(0), param(0), set_unif_bounds(0, 1)); // lognormal_proposal_logscale(new_param(0), param(0)); //
-  } else {
-    double norm_prop_logitbound_varsim = 0;
-    double nnsep2 = 0;
-    double par3 = 0;
-    
-    double par1   = normal_proposal_logitscale(new_param(0), param(0), set_unif_bounds(0, 1)); // lognormal_proposal_logscale(new_param(0), param(0)); // 
-    double nnsep1 = normal_proposal_logitscale(new_param(1), param(1), set_unif_bounds(1, 1)); // 
-    double par2   = normal_proposal_logitscale(new_param(2), param(2), set_unif_bounds(2, 1)); // lognormal_proposal_logscale(new_param(2), param(2)); // 
-    if(npars == 4){
-      // because a_psi2=1 and beta_psi2=1 this is [0, unifbound] and not [0, dlim].
-      norm_prop_logitbound_varsim   = normal_proposal_logitscale(new_param(3), param(3), set_unif_bounds(3, 1)); // 
-      //norm_prop_logitbound_varsim = lognormal_proposal_logscale(new_param(3), param(3)); // 
-    }
-    if(npars > 4){
-      nnsep2 = normal_proposal_logitscale(new_param(3), param(3)); // 
-      par3   = lognormal_proposal_logscale(new_param(4), param(4)); // 
-      for(int vj=0; vj<k; vj++){
-        norm_prop_logitbound_varsim += normal_proposal_logitscale(new_param(5+vj), param(5+vj), 2);
-      }
-    }
-    return par1 + par2 + par3 + nnsep1 + nnsep2 + 
-      norm_prop_logitbound_varsim;
-  }
-  */
 }
 
 
