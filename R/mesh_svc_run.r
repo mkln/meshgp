@@ -3,7 +3,7 @@ meshgp <- function(y, X, Z, coords, Mv,
                    num_threads = 7,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
                                       reference_full_coverage=F, verbose=F, debug=F, 
-                                      printall=F, saving=T, seed=NULL),
+                                      printall=F, saving=T),
                    prior       = list(set_unif_bounds=NULL),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T),
@@ -40,8 +40,6 @@ meshgp <- function(y, X, Z, coords, Mv,
     }
     
     rfc_dependence <- settings$reference_full_coverage
-    
-    seeded         <- ifelse(is.null(settings$seed), round(runif(1, 0, 1000)), settings$seed)
     
     sample_beta    <- debug$sample_beta
     sample_tausq   <- debug$sample_tausq
@@ -276,7 +274,6 @@ meshgp <- function(y, X, Z, coords, Mv,
                 w_mcmc    = w_mcmc,
                 yhat_mcmc = yhat_mcmc,
       
-                seed      = seeded, 
                 runtime_all   = comp_time,
                 runtime_mcmc  = mcmc_time,
                 sort_ix      = sort_ix,
@@ -383,7 +380,6 @@ meshgp <- function(y, X, Z, coords, Mv,
     
     return(list(infoplots = infoplots,
                 groups    = block_groups,
-                seed      = seeded, 
                 coords    = coords_blocking_mod,
                 recover   = results))
     }

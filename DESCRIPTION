@@ -1,6 +1,6 @@
 Package: meshgp
 Type: Package
-Title: Bayesian Mesh GP models for spatial and spatiotemporal data
+Title: Bayesian Cubic Meshed GP (Q-MGP) models for spatial and spatiotemporal data
 Version: 1.0
 Date: 2019-11-06
 Author: Who wrote it
@@ -8,4 +8,4 @@ Maintainer: Who to complain to <yourfault@somewhere.net>
 Description: More about what it does (maybe more than one line)
 License: What license is it under?
 Imports: Rcpp (>= 1.0.2)
-LinkingTo: Rcpp, RcppArmadillo
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen

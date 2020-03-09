@@ -2,6 +2,7 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include <RcppArmadillo.h>
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -171,15 +172,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // part_axis_parallel
-arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n_threads);
-RcppExport SEXP _meshgp_part_axis_parallel(SEXP coordsSEXP, SEXP MvSEXP, SEXP n_threadsSEXP) {
+arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n_threads, bool verbose);
+RcppExport SEXP _meshgp_part_axis_parallel(SEXP coordsSEXP, SEXP MvSEXP, SEXP n_threadsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type Mv(MvSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(part_axis_parallel(coords, Mv, n_threads));
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(part_axis_parallel(coords, Mv, n_threads, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -197,15 +199,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // mesh_graph_cpp
-Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, const arma::uvec& Mv, bool rfc);
-RcppExport SEXP _meshgp_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP rfcSEXP) {
+Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, const arma::uvec& Mv, bool rfc, bool verbose);
+RcppExport SEXP _meshgp_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP rfcSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type layers_descr(layers_descrSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type Mv(MvSEXP);
     Rcpp::traits::input_parameter< bool >::type rfc(rfcSEXP);
-    rcpp_result_gen = Rcpp::wrap(mesh_graph_cpp(layers_descr, Mv, rfc));
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(mesh_graph_cpp(layers_descr, Mv, rfc, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -262,6 +265,59 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
     Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
     rcpp_result_gen = Rcpp::wrap(xCovHUV(coords, ind1, ind2, cparams, Dmat, same));
+    return rcpp_result_gen;
+END_RCPP
+}
+// eigenchol
+Eigen::SparseMatrix<double> eigenchol(const Eigen::SparseMatrix<double>& A);
+RcppExport SEXP _meshgp_eigenchol(SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::SparseMatrix<double>& >::type A(ASEXP);
+    rcpp_result_gen = Rcpp::wrap(eigenchol(A));
+    return rcpp_result_gen;
+END_RCPP
+}
+// qmgp_Cinv
+Eigen::SparseMatrix<double> qmgp_Cinv(const arma::mat& coords, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::vec& block_names, const arma::field<arma::uvec>& indexing, const arma::vec& theta, const arma::mat& Dmat, int num_threads, bool cache, bool verbose, bool debug);
+RcppExport SEXP _meshgp_qmgp_Cinv(SEXP coordsSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP block_namesSEXP, SEXP indexingSEXP, SEXP thetaSEXP, SEXP DmatSEXP, SEXP num_threadsSEXP, SEXP cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type blocking(blockingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type block_names(block_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
+    rcpp_result_gen = Rcpp::wrap(qmgp_Cinv(coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads, cache, verbose, debug));
+    return rcpp_result_gen;
+END_RCPP
+}
+// qmgp_sampler
+Eigen::VectorXd qmgp_sampler(const arma::mat& coords, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::vec& block_names, const arma::field<arma::uvec>& indexing, const arma::vec& theta, const arma::mat& Dmat, int num_threads, bool cache, bool verbose, bool debug);
+RcppExport SEXP _meshgp_qmgp_sampler(SEXP coordsSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP block_namesSEXP, SEXP indexingSEXP, SEXP thetaSEXP, SEXP DmatSEXP, SEXP num_threadsSEXP, SEXP cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type blocking(blockingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type block_names(block_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
+    rcpp_result_gen = Rcpp::wrap(qmgp_sampler(coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads, cache, verbose, debug));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -325,13 +381,16 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_mesh_gibbs_groups", (DL_FUNC) &_meshgp_mesh_gibbs_groups, 3},
     {"_meshgp_turbocolthreshold", (DL_FUNC) &_meshgp_turbocolthreshold, 2},
     {"_meshgp_kthresholds", (DL_FUNC) &_meshgp_kthresholds, 2},
-    {"_meshgp_part_axis_parallel", (DL_FUNC) &_meshgp_part_axis_parallel, 3},
+    {"_meshgp_part_axis_parallel", (DL_FUNC) &_meshgp_part_axis_parallel, 4},
     {"_meshgp_part_axis_parallel_fixed", (DL_FUNC) &_meshgp_part_axis_parallel_fixed, 3},
-    {"_meshgp_mesh_graph_cpp", (DL_FUNC) &_meshgp_mesh_graph_cpp, 3},
+    {"_meshgp_mesh_graph_cpp", (DL_FUNC) &_meshgp_mesh_graph_cpp, 4},
     {"_meshgp_mvn", (DL_FUNC) &_meshgp_mvn, 3},
     {"_meshgp_vec_to_symmat", (DL_FUNC) &_meshgp_vec_to_symmat, 1},
     {"_meshgp_xCovHUV_base", (DL_FUNC) &_meshgp_xCovHUV_base, 6},
     {"_meshgp_xCovHUV", (DL_FUNC) &_meshgp_xCovHUV, 6},
+    {"_meshgp_eigenchol", (DL_FUNC) &_meshgp_eigenchol, 1},
+    {"_meshgp_qmgp_Cinv", (DL_FUNC) &_meshgp_qmgp_Cinv, 11},
+    {"_meshgp_qmgp_sampler", (DL_FUNC) &_meshgp_qmgp_sampler, 11},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 35},
     {NULL, NULL, 0}
 };

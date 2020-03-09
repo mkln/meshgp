@@ -9,7 +9,7 @@ mesh_dep <- function(coords_blocking, M){
   return(mesh_dep_cpp(blocks_descr %>% as.matrix(), M))
 }
 
-mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F){
+mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F, verbose=T){
   cbl <- coords_blocking %>% select(-contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
@@ -18,7 +18,7 @@ mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F){
   }
   blocks_descr <- unique(cbl) %>% as.matrix()
   
-  graphed <- mesh_graph_cpp(blocks_descr, Mv, rfc)
+  graphed <- mesh_graph_cpp(blocks_descr, Mv, rfc, verbose)
   groups <- mesh_gibbs_groups(blocks_descr, Mv, rfc)
   
   if("L3" %in% colnames(coords_blocking)){
@@ -34,6 +34,24 @@ mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F){
               children = children,
               names = names,
               groups = groups))
+}
+
+
+mesh_graph_build_sampling <- function(coords_blocking, Mv, na_which, rfc=F, verbose=F){
+  cbl <- coords_blocking %>% select(-contains("Var"))
+  if("L3" %in% colnames(coords_blocking)){
+    cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
+  } else {
+    cbl %<>% group_by(L1, L2, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
+  }
+  blocks_descr <- unique(cbl) %>% as.matrix()
+  
+  graphed <- mesh_graph_cpp(blocks_descr, Mv, rfc, verbose)
+  
+  list2env(graphed, environment())
+  return(list(parents = parents,
+              children = children,
+              names = names))
 }
 
 

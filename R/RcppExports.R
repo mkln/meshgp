@@ -53,16 +53,16 @@ kthresholds <- function(x, k) {
     .Call(`_meshgp_kthresholds`, x, k)
 }
 
-part_axis_parallel <- function(coords, Mv, n_threads) {
-    .Call(`_meshgp_part_axis_parallel`, coords, Mv, n_threads)
+part_axis_parallel <- function(coords, Mv, n_threads, verbose = FALSE) {
+    .Call(`_meshgp_part_axis_parallel`, coords, Mv, n_threads, verbose)
 }
 
 part_axis_parallel_fixed <- function(coords, thresholds, n_threads) {
     .Call(`_meshgp_part_axis_parallel_fixed`, coords, thresholds, n_threads)
 }
 
-mesh_graph_cpp <- function(layers_descr, Mv, rfc) {
-    .Call(`_meshgp_mesh_graph_cpp`, layers_descr, Mv, rfc)
+mesh_graph_cpp <- function(layers_descr, Mv, rfc, verbose = TRUE) {
+    .Call(`_meshgp_mesh_graph_cpp`, layers_descr, Mv, rfc, verbose)
 }
 
 mvn <- function(n, mu, sigma) {
@@ -79,6 +79,18 @@ xCovHUV_base <- function(h, u, v, params, q, dim) {
 
 xCovHUV <- function(coords, ind1, ind2, cparams, Dmat, same = FALSE) {
     .Call(`_meshgp_xCovHUV`, coords, ind1, ind2, cparams, Dmat, same)
+}
+
+eigenchol <- function(A) {
+    .Call(`_meshgp_eigenchol`, A)
+}
+
+qmgp_Cinv <- function(coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads = 1L, cache = FALSE, verbose = FALSE, debug = FALSE) {
+    .Call(`_meshgp_qmgp_Cinv`, coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads, cache, verbose, debug)
+}
+
+qmgp_sampler <- function(coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads = 1L, cache = FALSE, verbose = FALSE, debug = FALSE) {
+    .Call(`_meshgp_qmgp_sampler`, coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads, cache, verbose, debug)
 }
 
 qmeshgp_svc_mcmc <- function(y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, saving = TRUE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {

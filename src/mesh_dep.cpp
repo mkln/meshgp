@@ -220,8 +220,11 @@ arma::vec kthresholds(arma::vec& x,
 }
 
 //[[Rcpp::export]]
-arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n_threads){
-  Rcpp::Rcout << "~ Axis-parallel partitioning... ";
+arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n_threads, bool verbose=false){
+  
+  if(verbose){
+    Rcpp::Rcout << "~ Axis-parallel partitioning... ";
+  }
   arma::mat resultmat = arma::zeros(arma::size(coords));
   
 //#pragma omp parallel for num_threads(n_threads)
@@ -231,7 +234,10 @@ arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n
     arma::vec thresholds = kthresholds(cja, Mv(j));
     resultmat.col(j) = turbocolthreshold(coords.col(j), thresholds);
   }
-  Rcpp::Rcout << "done." << endl;
+  if(verbose){
+    Rcpp::Rcout << "done." << endl;
+  }
+  
   
   return resultmat;
 }
@@ -255,7 +261,8 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
 
 //[[Rcpp::export]]
 Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, 
-                          const arma::uvec& Mv, bool rfc){
+                          const arma::uvec& Mv, bool rfc,
+                          bool verbose=true){
   // coords_layering is a matrix
   // Var1 Var2 [Var3] L1 L2 [L3] layer na_which
   // layers_descr = coords_layering %>% select(-contains("Var")) 
@@ -272,13 +279,15 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
   if(layers_descr.n_cols > 5){
     dimen = 3;
   }
-  Rcpp::Rcout << "~ Building cubic mesh, d = " << dimen << endl;
-  if(!rfc){
-    Rcpp::Rcout << "~ S covers T: prediction iterations may take longer." << endl; 
-  } else {
-    Rcpp::Rcout << "~ S on all D: change rfc to F if very large gaps to fill." << endl;
-  }
   
+  if(verbose){
+    Rcpp::Rcout << "~ Building cubic mesh, d = " << dimen << endl;
+    if(!rfc){
+      Rcpp::Rcout << "~ S covers T: prediction iterations may take longer." << endl; 
+    } else {
+      Rcpp::Rcout << "~ S on all D: change rfc to F if very large gaps to fill." << endl;
+    }
+  }
   
   int num_blocks = arma::prod(Mv);
   
@@ -679,5 +688,7 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     Rcpp::Named("names") = lnames
   );
 }
+
+
 
 

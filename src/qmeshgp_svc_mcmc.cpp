@@ -464,7 +464,8 @@ Rcpp::List qmeshgp_svc_mcmc(
           llsave(msaved) = current_loglik;
           
           w_mcmc(msaved) = mesh.w;
-          yhat_mcmc(msaved) = mesh.X * mesh.Bcoeff + mesh.Zw;
+          Rcpp::RNGScope scope;
+          yhat_mcmc(msaved) = mesh.X * mesh.Bcoeff + mesh.Zw + pow(1.0/mesh.tausq_inv, .5) * arma::randn(n);
           msaved++;
         }
       }
