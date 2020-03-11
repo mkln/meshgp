@@ -61,7 +61,8 @@ meshgp <- function(y, X, Z, coords, Mv,
     cat(sprintf("~ %s average block size", avg_block),"\n")
     
     if(avg_block > 100){
-      goon <- readline(prompt="Average block size is large. Iterations will be slow. ")
+      #goon <- readline(prompt="Average block size is large. Iterations will be slow. Continue? Y/n: ")
+      print("Average block size is large. Iterations will be slow. ")
       #goon <- tolower(goon)
       #if(!(goon %in% c("y", ""))){
       #  return(0)
