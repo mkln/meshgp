@@ -4,10 +4,12 @@ meshgp <- function(y, X, Z, coords, Mv,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
                                       reference_full_coverage=F, verbose=F, debug=F, 
                                       printall=F, saving=T),
-                   prior       = list(set_unif_bounds=NULL),
+                   prior       = list(set_unif_bounds=NULL,
+                                      beta=NULL,
+                                      sigmasq=NULL,
+                                      tausq=NULL),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T),
-                   dry_run     = F,
                    recover     = list()
                    ){
 
@@ -121,6 +123,25 @@ meshgp <- function(y, X, Z, coords, Mv,
       set_unif_bounds <- prior$set_unif_bounds
     }
     
+    if(is.null(prior$beta)){
+      beta_Vi <- diag(ncol(X)) * 1/100
+    } else {
+      beta_Vi <- prior$beta
+    }
+    
+    if(is.null(prior$sigmasq)){
+      sigmasq_ab <- c(2.01, 1)
+    } else {
+      sigmasq_ab <- prior$sigmasq
+    }
+    
+    if(is.null(prior$tausq)){
+      tausq_ab <- c(2.01, 1)
+    } else {
+      tausq_ab <- prior$tausq
+    }
+    
+    
     if(length(settings$mcmcsd) == 1){
       mcmc_mh_sd <- diag(length(start_theta)) * settings$mcmcsd
     } else {
@@ -191,7 +212,7 @@ meshgp <- function(y, X, Z, coords, Mv,
     coords %<>% as.matrix()
   }
   
-  if((length(recover) == 0) || dry_run){
+  if(length(recover) == 0){
     # Domain partitioning and gibbs groups
     system.time(coords_blocking <- coords %>% tessellation_axis_parallel(Mv, num_threads) %>% cbind(na_which) )
     
@@ -228,8 +249,7 @@ meshgp <- function(y, X, Z, coords, Mv,
     blocking     <- numeric()
     indexing     <- list()
   }
-  
-  if(!dry_run){
+
     comp_time <- system.time({
       results <- qmeshgp_svc_mcmc(y, X, Z, coords, blocking,
                               
@@ -238,6 +258,9 @@ meshgp <- function(y, X, Z, coords, Mv,
                               indexing,
                               
                               set_unif_bounds,
+                              beta_Vi, 
+                              sigmasq_ab,
+                              tausq_ab,
                               
                               start_w, 
                               start_theta,
@@ -282,106 +305,4 @@ meshgp <- function(y, X, Z, coords, Mv,
                 recover   = recover
                 ))
     
-  } else {
-    cat("Dry run -- No MCMC, just preprocessing.\n")
-    
-    # 
-    modplot              <- coords_blocking %>% select(block, color) %>% unique() %>% cbind(block_groups[order(order(ggroup))]) 
-    colnames(modplot)[3] <- "groupmod"
-    
-    suppressMessages(coords_blocking_mod  <- coords_blocking %>% left_join(modplot))
-    gplotcols            <- c("#CB2314","#273046","#354823","#1E1E1E","#FAD510",
-                              "#DD8D29", "magenta" ,"#46ACC8", "#E58601", "#B40F20")
-    block_colorplot_text <- ggplot(coords_blocking_mod, aes(Var1, Var2, label=block, color=factor(groupmod))) + 
-      geom_text(size=3) + 
-      scale_color_manual(values=gplotcols)
-    
-    block_colorplot_tile <- ggplot(coords_blocking_mod, aes(Var1, Var2)) + 
-      geom_tile(aes(fill=factor(groupmod))) +
-      scale_fill_manual(values=gplotcols)
-    
-    infodf               <- coords_blocking %>% 
-      group_by(block) %>% 
-      summarise(blocksize=n()) 
-    
-    n_by_block           <- ggplot(infodf, aes(factor(blocksize))) + 
-      geom_bar() + 
-      theme_minimal() + 
-      labs(x=NULL, y=NULL) + 
-      ggtitle("Dist. of observations by block")
-    
-    infodf               <- y %>% split(blocking) %>% lapply(function(x) sum(!is.na(x))) %>% unlist()
-    infodf               <- data.frame(blocksize=infodf)
-    avail_by_block       <- ggplot(infodf, aes(factor(blocksize))) + 
-      geom_bar() + 
-      theme_minimal() + 
-      labs(x=NULL, y=NULL) + 
-      ggtitle("Dist. of not-NA observations by block")
-    
-    suppressMessages(meshinfo             <- simdata %>% left_join(coords_blocking))
-    data_scatter         <- ggplot(coords_blocking, aes(Var1, Var2)) + 
-      geom_point(aes(color=factor(na_which)), size=1) +
-      theme(legend.position="bottom")
-    
-    datacolor_scatter    <- ggplot(meshinfo,# %>% filter(!is.na(na_which)), 
-                                   aes(Var1, Var2)) + 
-      geom_tile(aes(fill=factor(color))) + 
-      geom_point(alpha=.2, aes(color=factor(color)))
-    
-    if(dd==3){
-      gtext <- coords_blocking %>% group_by(L1, L2, L3, block) %>%
-        summarize(Var1 = head(Var1, 1), Var2 = head(Var2, 1), Var3 = head(Var3, 1))  
-      gtextplot <- ggplot(gtext, aes(Var1, Var2, label=block)) + geom_text() + facet_grid(~factor(Var3))
-      
-    } else {
-      gtext <- coords_blocking %>% group_by(L1, L2, block) %>%
-        summarize(Var1 = head(Var1, 1), Var2 = head(Var2, 1))  
-      gtextplot <- ggplot(gtext, aes(Var1, Var2, label=block)) + geom_text()
-    }
-    
-    
-    infoplots <- list(
-      availdata_scatter = data_scatter,
-      colordata_scatter = datacolor_scatter,
-      blocks_tile       = block_colorplot_tile,
-      blocks_text       = block_colorplot_text,
-      gtext             = gtextplot,
-      blocks_obs_hist   = n_by_block,
-      blocks_avail_hist = avail_by_block
-    )
-    
-    comp_time <- system.time({
-      results <- qmeshgp_svc_dry(y, X, Z, coords, blocking,
-                              
-                              parents, children, block_names, block_groups,
-                              indexing,
-                             
-                              start_w, 
-                              start_theta,
-                              start_beta,
-                              start_tausq,
-                              start_sigmasq,
-                              diag(length(start_theta)) * mcmc_mh_sd,
-                             
-                              mcmc_keep, mcmc_burn, mcmc_thin,
-                              
-                              num_threads,
-                              
-                              mcmc_adaptive, # adapting
-                              mcmc_cache, # use cache
-                              mcmc_cache_gibbs,
-                              rfc_dependence, # use all coords as reference even at empty blocks
-                              mcmc_verbose, mcmc_debug, # verbose, debug
-                              mcmc_printall, # print all iter
-                              
-                              # sampling of:
-                              # beta tausq sigmasq theta w
-                              sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w) 
-    })
-    
-    return(list(infoplots = infoplots,
-                groups    = block_groups,
-                coords    = coords_blocking_mod,
-                recover   = results))
-    }
 }

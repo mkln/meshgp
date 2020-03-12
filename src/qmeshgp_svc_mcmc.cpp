@@ -42,7 +42,10 @@ Rcpp::List gen_recovery_data(const MeshGPsvc& mesh){
       Rcpp::Named("Bcoeff") = mesh.Bcoeff,
       Rcpp::Named("theta") = mesh.param_data.theta,
       Rcpp::Named("tausq_inv") = mesh.tausq_inv,
-      Rcpp::Named("sigmasq") = mesh.sigmasq
+      Rcpp::Named("sigmasq") = mesh.sigmasq,
+      Rcpp::Named("Vi") = mesh.Vi,
+      Rcpp::Named("sigmasq_ab") = mesh.sigmasq_ab,
+      Rcpp::Named("tausq_ab") = mesh.tausq_ab
     );
   
   Rcpp::List settings =
@@ -82,6 +85,9 @@ Rcpp::List qmeshgp_svc_mcmc(
     const arma::field<arma::uvec>& indexing,
     
     const arma::mat& set_unif_bounds_in,
+    const arma::mat& beta_Vi,
+    const arma::vec& sigmasq_ab,
+    const arma::vec& tausq_ab,
     
     const arma::mat& start_w,
     const arma::vec& theta,
@@ -187,6 +193,7 @@ Rcpp::List qmeshgp_svc_mcmc(
                   indexing,
                   
                   start_w, beta, theta, 1.0/tausq, sigmasq,
+                  beta_Vi, sigmasq_ab, tausq_ab,
                   
                   cache, cache_gibbs, rfc,
                   verbose, debug);
@@ -538,6 +545,10 @@ Rcpp::List qmeshgp_svc_dry(
     
     const arma::field<arma::uvec>& indexing,
     
+    const arma::mat& beta_Vi, 
+    const arma::vec& sigmasq_ab, 
+    const arma::vec& tausq_ab,
+    
     const arma::mat& start_w,
     const arma::vec& theta,
     const arma::vec& beta,
@@ -569,7 +580,8 @@ Rcpp::List qmeshgp_svc_dry(
   MeshGPsvc mesh(y, X, Z, coords, blocking, 
               parents, children, layer_names, layer_gibbs_group, 
               indexing, 
-              start_w, beta, theta, 1.0/tausq, sigmasq, 
+              start_w, beta, theta, 1.0/tausq, sigmasq,
+              beta_Vi, sigmasq_ab, tausq_ab,
               cache, cache_gibbs, rfc, 
               verbose, debug);
   

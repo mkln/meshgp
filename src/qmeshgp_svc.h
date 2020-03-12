@@ -70,6 +70,10 @@ public:
   arma::mat Vim;
   arma::vec bprim;
   
+  // sigmasq tausq priors
+  arma::vec sigmasq_ab;
+  arma::vec tausq_ab;
+  
   // dependence
   arma::field<arma::sp_mat> Ib;
   arma::field<arma::uvec>   parents; // i = parent block names for i-labeled block (not ith block)
@@ -185,6 +189,10 @@ public:
     double tausq_inv_in,
     double sigmasq_in,
     
+    const arma::mat& beta_Vi_in,
+    const arma::vec& sigmasq_ab_in,
+    const arma::vec& tausq_ab_in,
+    
     bool use_cache,
     bool use_cache_gibbs,
     bool use_rfc,
@@ -233,6 +241,10 @@ MeshGPsvc::MeshGPsvc(
   const arma::vec& theta_in,
   double tausq_inv_in,
   double sigmasq_in,
+  
+  const arma::mat& beta_Vi_in,
+  const arma::vec& sigmasq_ab_in,
+  const arma::vec& tausq_ab_in,
   
   bool use_cache=true,
   bool use_cache_gibbs=false,
@@ -347,9 +359,13 @@ MeshGPsvc::MeshGPsvc(
   
   // prior for beta
   XtX   = X_available.t() * X_available;
-  Vi    = .01 * arma::eye(p,p);
+  Vi    = beta_Vi_in;//.00001 * arma::eye(p,p);
   bprim = arma::zeros(p);
   Vim   = Vi * bprim;
+  
+  // priors for tausq and sigmasq
+  sigmasq_ab = sigmasq_ab_in;
+  tausq_ab = tausq_ab_in;
   
   message("MeshGPsvc::MeshGPsvc : make_gibbs_groups()");
   make_gibbs_groups();
@@ -438,6 +454,10 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   sigmasq          = Rcpp::as<double>(Rcpp::wrap(model_params["sigmasq"]));
   Zw               = armarowsum(Z % w);
   
+  Vi    = Rcpp::as<arma::mat>(Rcpp::wrap(model_params["Vi"]));
+  sigmasq_ab = Rcpp::as<arma::vec>(Rcpp::wrap(model_params["sigmasq_ab"]));
+  tausq_ab   = Rcpp::as<arma::vec>(Rcpp::wrap(model_params["tausq_ab"]));
+  
   printf("7 ");
   cached       = Rcpp::as<bool>(Rcpp::wrap(model_settings["cached"]));
   cached_gibbs = Rcpp::as<bool>(Rcpp::wrap(model_settings["cached_gibbs"]));
@@ -454,7 +474,7 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   n_gibbs_groups      = block_groups_labels.n_elem;
   n_blocks            = block_names.n_elem;
   XtX                 = X_available.t() * X_available;
-  Vi                  = .01 * arma::eye(p,p);
+  
   bprim               = arma::zeros(p);
   Vim                 = Vi * bprim;
   
@@ -1265,8 +1285,8 @@ void MeshGPsvc::gibbs_sample_sigmasq(){
   start = std::chrono::steady_clock::now();
   
   double oldsigmasq = sigmasq;
-  double aparam = 2.01 + n_loc_ne_blocks*q/2.0; //
-  double bparam = 1.0/( 1.0 + .5 * oldsigmasq * arma::accu( param_data.wcore ));
+  double aparam = sigmasq_ab(0) + n_loc_ne_blocks*q/2.0; //
+  double bparam = 1.0/( sigmasq_ab(1) + .5 * oldsigmasq * arma::accu( param_data.wcore ));
   
   Rcpp::RNGScope scope;
   sigmasq = 1.0/R::rgamma(aparam, bparam);
@@ -1320,8 +1340,8 @@ void MeshGPsvc::gibbs_sample_tausq(){
   
   arma::mat yrr = y_available - X_available * Bcoeff - Zw.rows(na_ix_all);
   double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
-  double aparam = 2.01 + n/2.0;
-  double bparam = 1.0/( 1.0 + .5 * bcore );
+  double aparam = tausq_ab(0) + n/2.0;
+  double bparam = 1.0/( tausq_ab(1) + .5 * bcore );
   
   Rcpp::RNGScope scope;
   tausq_inv = R::rgamma(aparam, bparam);
