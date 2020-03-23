@@ -1,19 +1,17 @@
 rm(list=ls())
-
-library(lubridate)
-library(spNNGP)
 library(tidyverse)
 library(magrittr)
 
-github_token <- "2be6ec16fcad254251bac09c231bfdf8009f4b43"
-#devtools::install_github("mkln/meshgp", auth_token=github_token)
+#devtools::install_github("mkln/meshgp")
 library(meshgp)
 
 set.seed(ss <- 1)
 
 simdata <- T
-for(simdata in c(F, T)){
-  for(Mv in list(c(25, 15), c(50, 30), c(100, 60))){
+Mv <- c(50, 30)
+
+#for(simdata in c(F, T)){
+#  for(Mv in list(c(25, 15), c(50, 30), c(100, 60))){
     if(simdata){
       #load("data/AllSimulatedTemps.RData")
       load(url("https://github.com/finnlindgren/heatoncomparison/raw/master/Data/AllSimulatedTemps.RData"))
@@ -40,7 +38,7 @@ for(simdata in c(F, T)){
       add(.5)
     
     nr <- nrow(coords)
-    X <- cbind(coords)#
+    X <- cbind(coords)
     Z <- matrix(1, nrow=nr)
     ybar <- mean(simdf$y, na.rm=T)
     y <- simdf$y - ybar
@@ -56,11 +54,6 @@ for(simdata in c(F, T)){
                             verbose=F, debug=F, 
                             printall=T, saving=F)
     mesh_debug <- list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
-    
-    # MESH
-    coords %>% apply(2, function(x) x %>% unique %>% length)
-    #Mv <- c(100,60) # 
-    (nr / prod(Mv) * ncol(Z))
     
     set.seed(1)
     mesh_time <- system.time({
@@ -82,7 +75,6 @@ for(simdata in c(F, T)){
     (tausq_est <- tausq_mcmc %>% mean())
     (theta_est <- theta_mcmc %>% apply(1, mean))
     
-    ybar <- 0
     meshgp_df <- meshout$coords %>% 
       cbind(w_mcmc    %>% list_mean(),
             yhat_mcmc %>% list_mean() %>% add(ybar),
@@ -104,36 +96,25 @@ for(simdata in c(F, T)){
     outsample %$% mean(abs(y_meshgp-y_full), na.rm=T)
     outsample %$% mean((y_meshgp_low<y_full) & (y_full<y_meshgp_hi), na.rm=T)
     
-    #> outsample %$% sqrt(mean((y_meshgp-y_full)^2, na.rm=T))
-    #[1] 1.58725
-    #> outsample %$% mean(abs(y_meshgp-y_full), na.rm=T)
-    #[1] 1.133814
-    #> outsample %$% mean((y_meshgp_low<y_full) & (y_full<y_meshgp_hi), na.rm=T)
-    #[1] 0.9291764
+    #save(file="postprocess/heaton/heaton_{label}_perf_{Mv[1]}x{Mv[2]}.RData" %>% glue::glue(), 
+    #     list=c("outsample", "Mv", "model_compare", "mesh_mcmc", "mesh_settings", "mesh_debug",
+    #            "meshout", "mesh_time", "meshgp_df"))
     
-    save(file="postprocess/heaton/heaton_{label}_perf_{Mv[1]}x{Mv[2]}_I_noybar.RData" %>% glue::glue(), 
-         list=c("outsample", "Mv", "model_compare", "mesh_mcmc", "mesh_settings", "mesh_debug",
-                "meshout", "mesh_time", "meshgp_df"))
-    
-  }
-}
+#  }
+#}
 
-##################
-# POSTPROCESSING #
-##################
+###############
+# Postprocess #
+###############
+
 plotdf <- model_compare %>% mutate(y = y + ybar) %>%
-  #select(-y_meshgp_hi, -y_meshgp_low, -contains("w_")) %>% 
-  #rename(MaskTemp = y,
-  #       TrueTemp = y_full,
-  #       Predicted = y_meshgp) %>%
   select(Var1, Var2, contains("w_")) %>%
   gather(z, zvalue, -Var1, -Var2) 
 
 
-# 
-gradient_colors <- c("#603511","#B1853E", #"#F4DA8B", 
-                     "#FDFECE", #"#8ABA40",
-                     "#52c234", "#476C1E", "#061700", "black")
+gradient_colors <- c("#603511", "#B1853E",
+                     "#FDFECE", "#52c234", 
+                     "#476C1E", "#061700", "black")
 
 
 (plotted <- ggplot(plotdf, aes(Var1, Var2, fill=zvalue)) + geom_raster() +
@@ -145,8 +126,8 @@ gradient_colors <- c("#603511","#B1853E", #"#F4DA8B",
     
     ggtitle("{tools::toTitleCase(label)} data from Heaton et al. (2019)" %>% glue::glue()))
 
-ggsave(filename="figures/heaton_{label}_results_{Mv[1]}x{Mv[2]}.png" %>% glue::glue(), 
-       plot=plotted, width=10, height=3, units="in")
+#ggsave(filename="figures/heaton_{label}_results_{Mv[1]}x{Mv[2]}.png" %>% glue::glue(), 
+#       plot=plotted, width=10, height=3, units="in")
 
 
 
