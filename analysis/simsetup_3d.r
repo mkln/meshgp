@@ -1,8 +1,11 @@
 rm(list=ls())
 library(tidyverse)
 library(magrittr)
-library(meshgp)
 library(gapfill)
+
+#devtools::install_github("mkln/meshgp")
+library(meshgp)
+
 
 set.seed(1) 
 # use powers of two to make layering easy for now.
