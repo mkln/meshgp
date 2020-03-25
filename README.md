@@ -1,7 +1,7 @@
 ## Q-MGP for spatial or spatiotemporal data
 See folder `analysis` for code to reproduce simulations and comparisons.
 
-![NDVI](https://raw.githubusercontent.com/mkln/meshgp/master/figures/Figure_NDVI_predict.png =300x300)
+<img src="https://raw.githubusercontent.com/mkln/meshgp/master/figures/Figure_NDVI_predict.png" height=300 align=center>
 
 ### Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains
 M. Peruzzi, S. Banerjee and A. O. Finley
