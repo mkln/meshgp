@@ -4,7 +4,7 @@ Title: Bayesian Cubic Meshed GP (Q-MGP) models for spatial and spatiotemporal da
 Version: 0.2
 Date: 2019-11-06
 Author: M. Peruzzi
-Maintainer: M. Peruzzi <peruzzi@gmail.com>
+Maintainer: M. Peruzzi <mklnsrc@gmail.com>
 Description: Fit linear spatially-varying coefficients Q-MGP models on spatial or spatiotemporal data
 License: CC BY 4.0
 Imports: Rcpp (>= 1.0.2)

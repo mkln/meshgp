@@ -50,7 +50,7 @@ rqmeshgp <- function(coords, Mv, theta, D, cache=F, n_threads=4){
                    F, # verb
                    F) # debug
   
-  return( qmgp_sampled )
+  return( qmgp_sampled[order(sort_ix)] )
   
 }
 
