@@ -22,6 +22,7 @@ struct MeshData {
   
   arma::vec wcore; 
   arma::field<arma::mat> w_cond_mean_K;
+  arma::field<arma::mat> w_cond_cholprec;
   arma::field<arma::mat> w_cond_prec;
   
   arma::vec logdetCi_comps;
