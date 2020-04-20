@@ -18,6 +18,7 @@ bool compute_block(bool predicting, int block_ct, bool rfc);
 // everything that changes during MCMC
 struct MeshData {
   
+  double sigmasq;
   arma::vec theta; 
   
   arma::vec wcore; 

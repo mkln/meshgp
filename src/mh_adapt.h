@@ -138,7 +138,9 @@ inline double lognormal_logdens(const double& x, const double& m, const double& 
 inline double gamma_logdens(const double& x, const double& a, const double& b){
   return -lgamma(a) + a*log(b) + (a-1.0)*log(x) - b*x;
 }
-
+inline double invgamma_logdens(const double& x, const double& a, const double& b){
+  return -lgamma(a) + a*log(b) + (-a-1.0)*log(x) - b/x;
+}
 inline double beta_logdens(const double& x, const double& a, const double& b, const double& c=1.0){
   // unnormalized
   return (a-1.0)*log(x) + (b-1.0)*log(c-x);

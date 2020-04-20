@@ -92,7 +92,7 @@ public:
   arma::mat w;
   arma::vec Bcoeff; // sampled
   double    tausq_inv;
-  double    sigmasq;
+  //double    sigmasq;
   
   // params with mh step
   MeshData param_data; 
@@ -148,7 +148,7 @@ public:
   void gibbs_sample_w_omp_nocache();
   
   void gibbs_sample_beta();
-  void gibbs_sample_sigmasq();
+  //void gibbs_sample_sigmasq();
   void gibbs_sample_tausq();
   
   // changing the values, no sampling
@@ -336,10 +336,11 @@ MeshGPsvc::MeshGPsvc(
   param_data.theta          = theta_in;
   param_data.cholfail       = false;
   param_data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
+  param_data.sigmasq          = sigmasq_in;
   alter_data                = param_data; 
   
   tausq_inv        = tausq_inv_in;
-  sigmasq          = sigmasq_in;
+  
   Bcoeff           = beta_in;
   w                = w_in;
   
@@ -452,7 +453,7 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   Bcoeff           = Rcpp::as<arma::vec>(Rcpp::wrap(model_params["Bcoeff"]));
   param_data.theta = Rcpp::as<arma::vec>(Rcpp::wrap(model_params["theta"]));
   tausq_inv        = Rcpp::as<double>(Rcpp::wrap(model_params["tausq_inv"]));
-  sigmasq          = Rcpp::as<double>(Rcpp::wrap(model_params["sigmasq"]));
+  param_data.sigmasq = Rcpp::as<double>(Rcpp::wrap(model_params["sigmasq"]));
   Zw               = armarowsum(Z % w);
   
   Vi    = Rcpp::as<arma::mat>(Rcpp::wrap(model_params["Vi"]));
@@ -1028,7 +1029,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   arma::field<arma::mat> w_cond_mean_cache(kr_caching.n_elem); // +++++++++
   //arma::field<arma::mat> Kcp_cache(kr_caching.n_elem);
   
-  arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
+  arma::vec Kparam = arma::join_vert(arma::ones(1)*data.sigmasq, data.theta); 
   int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
   
   arma::vec cparams = Kparam.subvec(0, npars);
@@ -1067,7 +1068,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       
       double nanxi = arma::accu(Kxxi_c);
       if(isnan(nanxi)){
-        Rcpp::Rcout << sigmasq << endl;
+        Rcpp::Rcout << data.sigmasq << endl;
         Rcpp::Rcout << "Error in inv tri chol sym(Kxx) at " << u << endl;
         data.track_chol_fails(u) = 1;
       }
@@ -1197,7 +1198,7 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
   start = std::chrono::steady_clock::now();
   message("[get_cond_comps_loglik_w_nocache] start. ");
   
-  arma::vec Kparam = arma::join_vert(arma::ones(1)*sigmasq, data.theta); 
+  arma::vec Kparam = arma::join_vert(arma::ones(1)*data.sigmasq, data.theta); 
   int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
   arma::vec cparams = Kparam.subvec(0, npars);
   arma::mat Dmat;
@@ -1284,7 +1285,7 @@ void MeshGPsvc::gibbs_sample_beta(){
                 << "us.\n";
   }
 }
-
+/*
 void MeshGPsvc::gibbs_sample_sigmasq(){
   start = std::chrono::steady_clock::now();
   
@@ -1339,7 +1340,7 @@ void MeshGPsvc::gibbs_sample_sigmasq(){
                 << endl;
   }
 }
-
+*/
 void MeshGPsvc::gibbs_sample_tausq(){
   start = std::chrono::steady_clock::now();
   
@@ -1542,28 +1543,26 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
           Smu_tot += Zblock(u).t() * ((tausq_inv * na_1_blocks(u)) % 
             ( y.rows(indexing(u)) - X.rows(indexing(u)) * Bcoeff ));
           
+          //start = std::chrono::steady_clock::now();
           Sigi_chol = arma::inv(arma::trimatl(arma::chol( arma::symmatu( Sigi_tot ), "lower")));
-          
-          //Rcpp::Rcout << "4 " << endl;
+          //end = std::chrono::steady_clock::now();
+
           // sample
           arma::vec rnvec = arma::vectorise(rand_norm_mat.rows(indexing(u)));
           //arma::vec rnvec = arma::randn(q*indexing(u).n_elem);
           arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec);
-          
-          //rand_norm_tracker(indexing(u), ug) += 1;
-          //Rcpp::Rcout << w_temp.n_elem/q << " " << q << "\n";
           w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
         } else {
           // only predictions at this block. 
           // sample from conditional MVN 
-          
           arma::vec w_par = arma::vectorise( w.rows(parents_indexing(u)) );
           
           arma::vec phimean = param_data.w_cond_mean_K(u) * w_par;
-          arma::mat cholK = arma::inv(arma::trimatu( param_data.w_cond_cholprec(u) ));
+          
+          arma::mat cholK = arma::inv(arma::trimatu( arma::flipud(arma::fliplr(param_data.w_cond_cholprec(u)) )));
+                       
           arma::vec normvec = arma::randn(q*indexing(u).n_elem);
           arma::vec w_temp = phimean + cholK * normvec;
-          
           w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
         }
         

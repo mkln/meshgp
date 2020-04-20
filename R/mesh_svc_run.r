@@ -105,17 +105,20 @@ meshgp <- function(y, X, Z, coords, Mv,
     btmlim <- 1e-5
     if(is.null(prior$set_unif_bounds)){
       if(space_uni){
-        set_unif_bounds <- matrix(c(btmlim, toplim), ncol=2)
+        set_unif_bounds <- matrix(rbind(
+          c(btmlim, toplim), c(btmlim, toplim)), ncol=2)
       } 
       if(space_mul || stime_mul){
-        set_unif_bounds <- matrix(rbind(c(btmlim, toplim), 
+        set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+                                        c(btmlim, toplim), 
                                         c(btmlim, 1-btmlim), 
                                         c(btmlim, toplim), 
                                         c(btmlim, 1-btmlim), 
                                         c(btmlim, toplim)), ncol=2)
       }
       if(stime_uni || stime_biv){
-        set_unif_bounds <- matrix(rbind(c(btmlim, 1e5), 
+        set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+          c(btmlim, 1e5), 
                                         c(btmlim, 1-btmlim), 
                                         c(btmlim, 1e5)), ncol=2)
       }
@@ -143,7 +146,7 @@ meshgp <- function(y, X, Z, coords, Mv,
     
     
     if(length(settings$mcmcsd) == 1){
-      mcmc_mh_sd <- diag(length(start_theta)) * settings$mcmcsd
+      mcmc_mh_sd <- diag(length(start_theta) + 1) * settings$mcmcsd
     } else {
       mcmc_mh_sd <- settings$mcmcsd
     }

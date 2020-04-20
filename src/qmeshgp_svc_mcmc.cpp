@@ -42,7 +42,7 @@ Rcpp::List gen_recovery_data(const MeshGPsvc& mesh){
       Rcpp::Named("Bcoeff") = mesh.Bcoeff,
       Rcpp::Named("theta") = mesh.param_data.theta,
       Rcpp::Named("tausq_inv") = mesh.tausq_inv,
-      Rcpp::Named("sigmasq") = mesh.sigmasq,
+      Rcpp::Named("sigmasq") = mesh.param_data.sigmasq,
       Rcpp::Named("Vi") = mesh.Vi,
       Rcpp::Named("sigmasq_ab") = mesh.sigmasq_ab,
       Rcpp::Named("tausq_ab") = mesh.tausq_ab
@@ -180,6 +180,9 @@ Rcpp::List qmeshgp_svc_mcmc(
     }
     set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
   }
+  
+
+  
   Rcpp::Rcout << set_unif_bounds << endl;
   
   MeshGPsvc mesh = MeshGPsvc();
@@ -218,7 +221,8 @@ Rcpp::List qmeshgp_svc_mcmc(
   mesh.get_loglik_comps_w( mesh.param_data );
   mesh.get_loglik_comps_w( mesh.alter_data );
   
-  arma::vec param = mesh.param_data.theta;
+  arma::vec param = arma::join_vert(arma::ones(1) * mesh.param_data.sigmasq, 
+                                    mesh.param_data.theta);
   double current_loglik = tempr*mesh.param_data.loglik_w;
   if(verbose & debug){
     Rcpp::Rcout << "starting from ll: " << current_loglik << endl; 
@@ -239,8 +243,8 @@ Rcpp::List qmeshgp_svc_mcmc(
   bool interrupted = false;
   Rcpp::Rcout << "Running MCMC for " << mcmc << " iterations." << endl;
   
-  arma::vec sumparam = arma::zeros(npars);
-  arma::mat prodparam = arma::zeros(npars, npars);
+  arma::vec sumparam = arma::zeros(npars + 1); // include sigmasq
+  arma::mat prodparam = arma::zeros(npars + 1, npars + 1);
   arma::mat paramsd = mcmcsd; // proposal sd
   arma::vec sd_param = arma::zeros(mcmc +1); // mcmc sd
   
@@ -284,6 +288,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         //Rcpp::Rcout << " >>>> CHECK : " << mesh.param_data.loglik_w << endl;
       }
       
+      /*
       ll_upd_msg = current_loglik;
       start = std::chrono::steady_clock::now();
       if(sample_sigmasq){
@@ -302,7 +307,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         //mesh.get_loglik_comps_w( mesh.param_data );
         //Rcpp::Rcout << " >>>> CHECK with: " << mesh.param_data.loglik_w << endl;
         //current_loglik = mesh.param_data.loglik_w;
-      }
+      }*/
       
       ll_upd_msg = current_loglik;
       start = std::chrono::steady_clock::now();
@@ -314,11 +319,13 @@ Rcpp::List qmeshgp_svc_mcmc(
         Rcpp::RNGScope scope;
         arma::vec new_param = param;
         new_param = par_huvtransf_back(par_huvtransf_fwd(param, set_unif_bounds) + 
-          paramsd * arma::randn(npars), set_unif_bounds);
+          paramsd * arma::randn(npars + 1), set_unif_bounds);
         
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         
-        mesh.theta_update(mesh.alter_data, new_param); 
+        mesh.alter_data.sigmasq = new_param(0);
+        mesh.theta_update(mesh.alter_data, new_param.subvec(1, new_param.n_elem-1)); 
+        
         mesh.get_loglik_comps_w( mesh.alter_data );
         
         bool accepted = !out_unif_bounds;
@@ -336,8 +343,10 @@ Rcpp::List qmeshgp_svc_mcmc(
           }
           
           //prior_logratio = calc_prior_logratio(k, new_param, param, npars, dlim);
-          jacobian       = calc_jacobian(new_param, param, set_unif_bounds);
+          jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + //prior_logratio + 
+            invgamma_logdens(new_param(0), sigmasq_ab(0), sigmasq_ab(1)) -
+            invgamma_logdens(mesh.param_data.sigmasq, sigmasq_ab(0), sigmasq_ab(1)) +
             jacobian;
           
           if(isnan(logaccept)){
@@ -452,7 +461,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         int itertime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-tick_mcmc ).count();
         
         printf("%5d-th iteration [ %dms ] ~ tsq=%.4f ssq=%.4f | MCMC acceptance %.2f%% (total: %.2f%%)\n", 
-               m+1, itertime, 1.0/mesh.tausq_inv, mesh.sigmasq, accept_ratio_local*100, accept_ratio*100);
+               m+1, itertime, 1.0/mesh.tausq_inv, mesh.param_data.sigmasq, accept_ratio_local*100, accept_ratio*100);
         for(int pp=0; pp<npars; pp++){
           printf("theta%1d=%.4f ", pp, mesh.param_data.theta(pp));
         }
@@ -465,7 +474,7 @@ Rcpp::List qmeshgp_svc_mcmc(
       if(mx >= 0){
         if(mx % mcmc_thin == 0){
           tausq_mcmc.col(msaved) = 1.0 / mesh.tausq_inv;
-          sigmasq_mcmc.col(msaved) = mesh.sigmasq;
+          sigmasq_mcmc.col(msaved) = mesh.param_data.sigmasq;
           b_mcmc.col(msaved) = mesh.Bcoeff;
           theta_mcmc.col(msaved) = mesh.param_data.theta;
           llsave(msaved) = current_loglik;
