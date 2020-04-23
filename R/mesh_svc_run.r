@@ -194,22 +194,13 @@ meshgp <- function(y, X, Z, coords, Mv,
   colnames(simdata)[1] <- "ix"
   if(dd == 2){
     simdata %<>% arrange(Var1, Var2)
-    coords <- simdata %>% select(Var1, Var2)
+    coords <- simdata %>% dplyr::select(Var1, Var2)
     colnames(simdata)[4:5] <- c("y", "na_which")
   } else {
     simdata %<>% arrange(Var1, Var2, Var3)
-    coords <- simdata %>% select(Var1, Var2, Var3)
+    coords <- simdata %>% dplyr::select(Var1, Var2, Var3)
     colnames(simdata)[5:6] <- c("y", "na_which")
   }
-  
-  sort_ix     <- simdata$ix
-  
-  y           <- simdata$y %>% matrix(ncol=1)
-  X           <- simdata %>% select(contains("X_")) %>% as.matrix()
-  colnames(X) <- orig_X_colnames
-  Z           <- simdata %>% select(contains("Z_")) %>% as.matrix()
-  colnames(Z) <- orig_Z_colnames
-  na_which    <- simdata$na_which
   
   if(!is.matrix(coords)){
     coords %<>% as.matrix()
@@ -217,17 +208,48 @@ meshgp <- function(y, X, Z, coords, Mv,
   
   if(length(recover) == 0){
     # Domain partitioning and gibbs groups
-    system.time(coords_blocking <- coords %>% tessellation_axis_parallel(Mv, num_threads) %>% cbind(na_which) )
+    fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], Mv[i])) 
+    
+    # guaranteed to produce blocks using Mv
+    system.time(fake_coords_blocking <- coords %>% 
+                  as.matrix() %>% 
+                  gen_fake_coords(fixed_thresholds, 1) )
+    
+    # Domain partitioning and gibbs groups
+    system.time(coords_blocking <- coords %>% 
+                  as.matrix() %>%
+                  tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% cbind(na_which) )
+    
+    # check if some blocks come up totally empty
+    
+    blocks_prop <- coords_blocking[,paste0("L", 1:dd)] %>% unique()
+    blocks_fake <- fake_coords_blocking[,paste0("L", 1:dd)] %>% unique()
+    if(nrow(blocks_fake) != nrow(blocks_prop)){
+      cat("Adding fake coords to avoid empty blocks ~ don't like? Use lower Mv\n")
+      # with current Mv, some blocks are completely empty
+      # this messes with indexing. so we add completely unobserved coords
+      suppressMessages(adding_blocks <- blocks_fake %>% dplyr::setdiff(blocks_prop) %>%
+                         left_join(fake_coords_blocking))
+      coords_blocking <- bind_rows(coords_blocking, fake_coords_blocking)
+      if(dd == 2){
+        coords_blocking %<>% arrange(Var1, Var2)
+      } else {
+        coords_blocking %<>% arrange(Var1, Var2, Var3)
+      }
+      nr_full <- nrow(coords_blocking)
+    } else {
+      nr_full <- nr
+    }
     
     if(!rfc_dependence){
       emptyblocks <- coords_blocking %>% 
         group_by(block) %>% 
         summarize(avail = mean(!is.na(na_which))) %>%
-        filter(avail==0)
+        dplyr::filter(avail==0)
       newcol <- coords_blocking$color %>% max() %>% add(1)
       coords_blocking %<>% mutate(color = ifelse(block %in% emptyblocks$block, newcol, color))
     }
-    c_unique <- coords_blocking %>% select(block, color) %>% unique()
+    c_unique <- coords_blocking %>% dplyr::select(block, color) %>% unique()
     ggroup <- c_unique %$% block
     gcolor <- c_unique %$% color
     
@@ -239,7 +261,23 @@ meshgp <- function(y, X, Z, coords, Mv,
     children                     <- parents_children[["children"]] 
     block_names                  <- parents_children[["names"]] 
     block_groups                 <- parents_children[["groups"]][order(block_names)]
-    indexing                     <- (1:nr-1) %>% split(blocking)
+    indexing                     <- (1:nr_full-1) %>% split(blocking)
+    
+    
+    # finally prepare data
+    sort_ix     <- simdata$ix
+    
+    y           <- simdata$y %>% matrix(ncol=1)
+    X           <- simdata %>% dplyr::select(contains("X_")) %>% as.matrix()
+    colnames(X) <- orig_X_colnames
+    X[is.na(X)] <- 0 # NAs if added coords due to empty blocks
+    Z           <- simdata %>% dplyr::select(contains("Z_")) %>% as.matrix()
+    Z[is.na(Z)] <- 0
+    colnames(Z) <- orig_Z_colnames
+    na_which    <- simdata$na_which
+    
+    coords <- simdata %>% dplyr::select(contains("Var")) %>% as.matrix()
+    
     
     #block_groups <- check_gibbs_groups(block_groups, parents, children, block_names, blocking, 20)
   } else {

@@ -8,8 +8,6 @@
 
 using namespace std;
 
-
-//[[Rcpp::export]]
 arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na=-1, int pred=4){
   
   arma::uvec locs = arma::find( (x != na) % (x != pred) );
@@ -187,8 +185,6 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
 }
 
 
-
-//[[Rcpp::export]]
 arma::vec turbocolthreshold(const arma::vec& col1, const arma::vec& thresholds){
   //col %>% sapply(function(x) as.character(1+sum(x >= thresholds)))
   
@@ -205,8 +201,22 @@ arma::vec turbocolthreshold(const arma::vec& col1, const arma::vec& thresholds){
   return result;
 }
 
-//[[Rcpp::export]]
 arma::vec kthresholds(arma::vec& x,
+                      int k){
+  arma::vec res(k-1);
+  
+  for(unsigned int i=1; i<k; i++){
+    unsigned int Q1 = i * x.n_elem / k;
+    std::nth_element(x.begin(), x.begin() + Q1, x.end());
+    res(i-1) = x(Q1);
+  }
+  
+  return res;
+}
+
+
+//[[Rcpp::export]]
+arma::vec kthresholdscp(arma::vec x,
                       int k){
   arma::vec res(k-1);
   
@@ -245,7 +255,7 @@ arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n
 
 //[[Rcpp::export]]
 arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<arma::vec>& thresholds, int n_threads){
-  Rcpp::Rcout << "~ Axis-parallel partitioning [fixed thresholds]... ";
+  //Rcpp::Rcout << "~ Axis-parallel partitioning [fixed thresholds]... ";
   arma::mat resultmat = arma::zeros(arma::size(coords));
   
   //#pragma omp parallel for num_threads(n_threads)
@@ -255,7 +265,7 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
     arma::vec thresholds_col = thresholds(j);
     resultmat.col(j) = turbocolthreshold(coords.col(j), thresholds_col);
   }
-  Rcpp::Rcout << "done." << endl;
+  //Rcpp::Rcout << "done." << endl;
   return resultmat;
 }
 

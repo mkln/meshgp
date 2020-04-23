@@ -1,7 +1,7 @@
 #include "RcppArmadillo.h"
 #include "omp.h"
 
-//[[Rcpp::export]]
+
 arma::vec check_gibbs_groups(
            arma::vec block_groups,
      const arma::field<arma::vec>& parents,

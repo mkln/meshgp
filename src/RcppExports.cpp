@@ -7,31 +7,6 @@
 
 using namespace Rcpp;
 
-// caching_pairwise_compare_u
-arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks, const arma::vec& names);
-RcppExport SEXP _meshgp_caching_pairwise_compare_u(SEXP blocksSEXP, SEXP namesSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type blocks(blocksSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type names(namesSEXP);
-    rcpp_result_gen = Rcpp::wrap(caching_pairwise_compare_u(blocks, names));
-    return rcpp_result_gen;
-END_RCPP
-}
-// caching_pairwise_compare_uc
-arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks, const arma::vec& names, const arma::vec& ct_obs);
-RcppExport SEXP _meshgp_caching_pairwise_compare_uc(SEXP blocksSEXP, SEXP namesSEXP, SEXP ct_obsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type blocks(blocksSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type names(namesSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type ct_obs(ct_obsSEXP);
-    rcpp_result_gen = Rcpp::wrap(caching_pairwise_compare_uc(blocks, names, ct_obs));
-    return rcpp_result_gen;
-END_RCPP
-}
 // caching_pairwise_compare_uci
 arma::vec caching_pairwise_compare_uci(const arma::mat& coords, const arma::field<arma::uvec>& indexing, const arma::vec& names, const arma::vec& ct_obs);
 RcppExport SEXP _meshgp_caching_pairwise_compare_uci(SEXP coordsSEXP, SEXP indexingSEXP, SEXP namesSEXP, SEXP ct_obsSEXP) {
@@ -43,34 +18,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type names(namesSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type ct_obs(ct_obsSEXP);
     rcpp_result_gen = Rcpp::wrap(caching_pairwise_compare_uci(coords, indexing, names, ct_obs));
-    return rcpp_result_gen;
-END_RCPP
-}
-// check_gibbs_groups
-arma::vec check_gibbs_groups(arma::vec block_groups, const arma::field<arma::vec>& parents, const arma::field<arma::vec>& children, const arma::vec& block_names, const arma::vec& blocks, int maxit);
-RcppExport SEXP _meshgp_check_gibbs_groups(SEXP block_groupsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP block_namesSEXP, SEXP blocksSEXP, SEXP maxitSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type block_groups(block_groupsSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::vec>& >::type parents(parentsSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::vec>& >::type children(childrenSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type block_names(block_namesSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type blocks(blocksSEXP);
-    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
-    rcpp_result_gen = Rcpp::wrap(check_gibbs_groups(block_groups, parents, children, block_names, blocks, maxit));
-    return rcpp_result_gen;
-END_RCPP
-}
-// find_not_nan
-arma::field<arma::mat> find_not_nan(const arma::field<arma::mat>& infield, const arma::field<arma::mat>& filtering);
-RcppExport SEXP _meshgp_find_not_nan(SEXP infieldSEXP, SEXP filteringSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type infield(infieldSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type filtering(filteringSEXP);
-    rcpp_result_gen = Rcpp::wrap(find_not_nan(infield, filtering));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -119,21 +66,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// noseqdup
-arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na, int pred);
-RcppExport SEXP _meshgp_noseqdup(SEXP xSEXP, SEXP has_changedSEXP, SEXP maxcSEXP, SEXP naSEXP, SEXP predSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
-    Rcpp::traits::input_parameter< bool& >::type has_changed(has_changedSEXP);
-    Rcpp::traits::input_parameter< int >::type maxc(maxcSEXP);
-    Rcpp::traits::input_parameter< int >::type na(naSEXP);
-    Rcpp::traits::input_parameter< int >::type pred(predSEXP);
-    rcpp_result_gen = Rcpp::wrap(noseqdup(x, has_changed, maxc, na, pred));
-    return rcpp_result_gen;
-END_RCPP
-}
 // mesh_gibbs_groups
 arma::mat mesh_gibbs_groups(const arma::mat& layers_descr, const arma::uvec& Mv, bool rfc);
 RcppExport SEXP _meshgp_mesh_gibbs_groups(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP rfcSEXP) {
@@ -147,27 +79,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// turbocolthreshold
-arma::vec turbocolthreshold(const arma::vec& col1, const arma::vec& thresholds);
-RcppExport SEXP _meshgp_turbocolthreshold(SEXP col1SEXP, SEXP thresholdsSEXP) {
+// kthresholdscp
+arma::vec kthresholdscp(arma::vec x, int k);
+RcppExport SEXP _meshgp_kthresholdscp(SEXP xSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type col1(col1SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type thresholds(thresholdsSEXP);
-    rcpp_result_gen = Rcpp::wrap(turbocolthreshold(col1, thresholds));
-    return rcpp_result_gen;
-END_RCPP
-}
-// kthresholds
-arma::vec kthresholds(arma::vec& x, int k);
-RcppExport SEXP _meshgp_kthresholds(SEXP xSEXP, SEXP kSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
     Rcpp::traits::input_parameter< int >::type k(kSEXP);
-    rcpp_result_gen = Rcpp::wrap(kthresholds(x, k));
+    rcpp_result_gen = Rcpp::wrap(kthresholdscp(x, k));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -371,19 +291,13 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_meshgp_caching_pairwise_compare_u", (DL_FUNC) &_meshgp_caching_pairwise_compare_u, 2},
-    {"_meshgp_caching_pairwise_compare_uc", (DL_FUNC) &_meshgp_caching_pairwise_compare_uc, 3},
     {"_meshgp_caching_pairwise_compare_uci", (DL_FUNC) &_meshgp_caching_pairwise_compare_uci, 4},
-    {"_meshgp_check_gibbs_groups", (DL_FUNC) &_meshgp_check_gibbs_groups, 6},
-    {"_meshgp_find_not_nan", (DL_FUNC) &_meshgp_find_not_nan, 2},
     {"_meshgp_hex_to_dec", (DL_FUNC) &_meshgp_hex_to_dec, 1},
     {"_meshgp_hex_to_dec_vec", (DL_FUNC) &_meshgp_hex_to_dec_vec, 1},
     {"_meshgp_list_mean", (DL_FUNC) &_meshgp_list_mean, 1},
     {"_meshgp_list_qtile", (DL_FUNC) &_meshgp_list_qtile, 2},
-    {"_meshgp_noseqdup", (DL_FUNC) &_meshgp_noseqdup, 5},
     {"_meshgp_mesh_gibbs_groups", (DL_FUNC) &_meshgp_mesh_gibbs_groups, 3},
-    {"_meshgp_turbocolthreshold", (DL_FUNC) &_meshgp_turbocolthreshold, 2},
-    {"_meshgp_kthresholds", (DL_FUNC) &_meshgp_kthresholds, 2},
+    {"_meshgp_kthresholdscp", (DL_FUNC) &_meshgp_kthresholdscp, 2},
     {"_meshgp_part_axis_parallel", (DL_FUNC) &_meshgp_part_axis_parallel, 4},
     {"_meshgp_part_axis_parallel_fixed", (DL_FUNC) &_meshgp_part_axis_parallel_fixed, 3},
     {"_meshgp_mesh_graph_cpp", (DL_FUNC) &_meshgp_mesh_graph_cpp, 4},

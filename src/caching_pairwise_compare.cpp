@@ -2,7 +2,7 @@
 
 using namespace std;
 
-//[[Rcpp::export]]
+
 arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
                                             const arma::vec& names){
   
@@ -52,8 +52,6 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
 }
 
 
-
-//[[Rcpp::export]]
 arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
                                      const arma::vec& names,
                                      const arma::vec& ct_obs){

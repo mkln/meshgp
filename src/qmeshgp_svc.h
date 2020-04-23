@@ -9,20 +9,19 @@
 #include "caching_pairwise_compare.h"
 #include "nonseparable_huv_cov.h"
 #include "debug.h"
-
+ 
 #include "mgp_utils.h"
 // with indexing
 // without block extensions (obs with NA are left in)
 
 using namespace std;
 
+//#include <RcppArmadilloExtensions/sample.h>
 
-#include <RcppArmadilloExtensions/sample.h>
-
-arma::uvec ashuffle(const arma::uvec& x){
+//arma::uvec ashuffle(const arma::uvec& x){
   //  Rcpp::RNGScope scope;
-  return Rcpp::RcppArmadillo::sample(x, x.n_elem, false); 
-}
+//  return Rcpp::RcppArmadillo::sample(x, x.n_elem, false); 
+//}
 
 const double hl2pi = -.5 * log(2 * M_PI);
 
@@ -1492,10 +1491,10 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
   
   start_overall = std::chrono::steady_clock::now();
   
-  arma::uvec gibbs_groups_reorder = ashuffle(arma::regspace<arma::uvec>(0, n_gibbs_groups-1));
+  //arma::uvec gibbs_groups_reorder = ashuffle(arma::regspace<arma::uvec>(0, n_gibbs_groups-1));
   
-  for(int go=0; go<n_gibbs_groups; go++){
-    int g = gibbs_groups_reorder(go);
+  for(int g=0; g<n_gibbs_groups; g++){
+    //int g = gibbs_groups_reorder(go);
     #pragma omp parallel for
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);

@@ -1,25 +1,3 @@
-tessellation_civ <- function(coordsmat, Mv, n_threads, verbose=F){
-  blocks_by_coord <- part_axis_parallel(coordsmat, Mv, n_threads, verbose) %>% 
-    #apply(2, factor)
-    apply(2, function(x) sprintf("%08d", x))
-  colnames(blocks_by_coord) <- paste0("L", 1:ncol(coordsmat))
-  
-  #blocks_by_coord %>%  %>% as.data.frame() %>% as.list() %>% interaction()
-  
-  block <- blocks_by_coord %>% 
-    as.data.frame() %>% as.list() %>% interaction()
-  blockdf <- data.frame(blocks_by_coord %>% apply(2, as.numeric), block=as.numeric(block))
-  
-  if(ncol(coordsmat)==2){
-    result <- cbind(coordsmat, blockdf) %>% 
-      mutate(color = ((L1-1)*2+(L2-1)) %% 4)
-    return(result)
-  } else {
-    result <- cbind(coordsmat, blockdf) %>% 
-      mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
-    return(result)
-  }
-}
 
 
 rqmeshgp <- function(coords, Mv, theta, D, cache=F, n_threads=4){
@@ -32,9 +10,9 @@ rqmeshgp <- function(coords, Mv, theta, D, cache=F, n_threads=4){
   coords_blocking %<>% mutate(sort_ix = 1:n())
   coords_blocking %<>% arrange(block, Var1, Var2)
   sort_ix <- coords_blocking %>% pull(sort_ix)
-  coords_blocking %<>% select(-sort_ix)
+  coords_blocking %<>% dplyr::select(-sort_ix)
   
-  coords_sorted <- coords_blocking %>% select(contains("Var")) %>% as.matrix()
+  coords_sorted <- coords_blocking %>% dplyr::select(contains("Var")) %>% as.matrix()
   blocking_sorted <- coords_blocking$block %>% #factor() %>% 
     as.integer()
   # DAG
@@ -65,9 +43,9 @@ qmeshgp_cinv <- function(coords, Mv, theta, D, n_threads=4){
   coords_blocking %<>% mutate(sort_ix = 1:n())
   coords_blocking %<>% arrange(block, Var1, Var2)
   sort_ix <- coords_blocking %>% pull(sort_ix)
-  coords_blocking %<>% select(-sort_ix)
+  coords_blocking %<>% dplyr::select(-sort_ix)
   
-  coords_sorted <- coords_blocking %>% select(contains("Var")) %>% as.matrix()
+  coords_sorted <- coords_blocking %>% dplyr::select(contains("Var")) %>% as.matrix()
   blocking_sorted <- coords_blocking$block %>% #factor() %>% 
     as.integer()
   # DAG

@@ -1,5 +1,5 @@
 mesh_dep <- function(coords_blocking, M){
-  cbl <- coords_blocking %>% select(-contains("Var"))
+  cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which))
   } else {
@@ -10,7 +10,7 @@ mesh_dep <- function(coords_blocking, M){
 }
 
 mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F, verbose=T){
-  cbl <- coords_blocking %>% select(-contains("Var"))
+  cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
   } else {
@@ -38,7 +38,7 @@ mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F, verbose=T){
 
 
 mesh_graph_build_sampling <- function(coords_blocking, Mv, na_which, rfc=F, verbose=F){
-  cbl <- coords_blocking %>% select(-contains("Var"))
+  cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
   } else {
@@ -55,19 +55,3 @@ mesh_graph_build_sampling <- function(coords_blocking, Mv, na_which, rfc=F, verb
 }
 
 
-mesh_graph_build_backup <- function(coords_blocking, M, rfc=F){
-  cbl <- coords_blocking %>% select(-contains("Var"))
-  if("L3" %in% colnames(coords_blocking)){
-    cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n())
-  } else {
-    cbl %<>% group_by(L1, L2, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n())
-  }
-  blocks_descr <- unique(cbl) %>% as.matrix()
-  if(rfc){
-    result <- mesh_dep_rfc_backup_cpp(blocks_descr, M)
-  } else {
-    result <- mesh_dep_norfc_backup_cpp(blocks_descr, M)
-  }
-  return(result)
-}
- 

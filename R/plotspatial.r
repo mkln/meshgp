@@ -5,7 +5,7 @@ plotspatial <- function(dfxyz, na_val = 0, nrow=1, lims=NULL){
     dfxyz %<>% as.data.frame()
   }
   colnames(dfxyz)[1:2] <- c("coordx", "coordy")
-  dfxyz_p <- dfxyz %>% select(-coordx, -coordy) %<>% mutate_all(function(x) ifelse(x==na_val, NA, x))
+  dfxyz_p <- dfxyz %>% dplyr::select(-coordx, -coordy) %<>% mutate_all(function(x) ifelse(x==na_val, NA, x))
   dfxyz[,-c(1:2)] <- dfxyz_p
   dfl <- dfxyz %>% gather(z, zvalue, -coordx, -coordy)
   
