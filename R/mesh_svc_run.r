@@ -230,7 +230,7 @@ meshgp <- function(y, X, Z, coords, Mv,
       # this messes with indexing. so we add completely unobserved coords
       suppressMessages(adding_blocks <- blocks_fake %>% dplyr::setdiff(blocks_prop) %>%
                          left_join(fake_coords_blocking))
-      coords_blocking <- bind_rows(coords_blocking, fake_coords_blocking)
+      coords_blocking <- bind_rows(coords_blocking, adding_blocks)
       if(dd == 2){
         coords_blocking %<>% arrange(Var1, Var2)
       } else {
