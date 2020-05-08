@@ -111,7 +111,7 @@ for(s in 1:nrow(pars_grid)){
   
   set.seed(1)
   mesh_time <- system.time({
-    test <- meshgp(y, X, Z, coords, Mv=c(10, 10, 5), 
+    test <- meshgp(y, X, Z, coords, axis_partition=c(10, 10, 5), 
                    mcmc = list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin),
                    num_threads = 11,
                    debug       = list(sample_beta=F, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T))

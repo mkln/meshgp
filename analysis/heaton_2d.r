@@ -7,7 +7,7 @@ library(meshgp)
 
 set.seed(ss <- 1)
 
-simdata <- T
+simdata <- F
 Mv <- c(50, 30)
 
 #for(simdata in c(F, T)){
@@ -45,7 +45,7 @@ Mv <- c(50, 30)
     
     
     mcmc_keep <- 1000
-    mcmc_burn <- 4000
+    mcmc_burn <- 1000
     mcmc_thin <- 2
     
     mesh_mcmc <- list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin)
@@ -57,10 +57,10 @@ Mv <- c(50, 30)
     
     set.seed(1)
     mesh_time <- system.time({
-      meshout <- meshgp(y, X, Z, coords, Mv=Mv, 
+      meshout <- meshgp(y, X, Z, coords, axis_partition=Mv, 
                         mcmc = mesh_mcmc,
                         settings = mesh_settings,
-                        num_threads = 11)
+                        num_threads = 10)
     }) 
     
     beta_mcmc <- meshout$beta_mcmc

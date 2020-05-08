@@ -104,14 +104,13 @@ recover_data <- list()
 mcmcsd <- .1
 mesh_time <- system.time({
   meshout <- meshgp(y, X, Z,  
-                    coords, Mv=Mv, 
+                    coords, axis_partition=Mv, 
                     mcmc = list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin),
                     num_threads = 11,
                     settings    = list(adapting=T, mcmcsd=mcmcsd, 
                                        cache=T, cache_gibbs=F, 
                                        reference_full_coverage=F, saving=T,
                                        verbose=F, debug=F, printall=T, seed=NULL),
-                    dry_run     = F,
                     recover     = recover_data)
 })
 

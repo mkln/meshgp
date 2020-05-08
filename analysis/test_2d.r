@@ -6,11 +6,12 @@ library(magrittr)
 
 set.seed(2020)
 
-SS <- 150 # coord values for jth dimension 
+SS <- 25 # coord values for jth dimension 
 n <- SS^2 # tot obs
 
 xlocs <- seq(0.0, 1, length.out=SS+2) %>% head(-1) %>% tail(-1)
-coords <- expand.grid(xlocs, xlocs) %>% 
+coords <- #cbind(runif(n), runif(n)) %>% as.data.frame() %>% rename(Var1=V1, Var2=V2) %>%#
+  expand.grid(xlocs, xlocs) %>% 
   arrange(Var1, Var2)
 cx <- coords %>% as.matrix()
 ix <- 1:nrow(cx) -1
@@ -21,9 +22,9 @@ Z <- matrix(1, nrow=n)
 B <- as.matrix(c(-.2,.6))
 p <- length(B)
 
-sigma.sq <- 1.5
-tau.sq <- .05
-phi <- 5
+sigma.sq <- 3
+tau.sq <- .02
+phi <- 3
 
 # sample from full GP
 #system.time(R12 <- xCovHUV(cx, ix, ix, c(sigma.sq, phi), matrix(0), T))
@@ -35,7 +36,7 @@ system.time(w <- meshgp::rqmeshgp(cx, Mv_true, c(sigma.sq, phi), matrix(0)))
 w <- w-mean(w) 
 
 # plot spatial process
-coords %>% cbind(w) %>% plotspatial()
+#coords %>% cbind(w) %>% plotspatial()
 
 # generate output
 y_full <- X%*%B + w + sqrt(tau.sq) * rnorm(n)
@@ -43,23 +44,25 @@ X_full <- X
 
 # make some na: 0=na
 lna <- 1:n %>% sapply(function(x) ifelse(rbinom(1, 1, .9)==1, 1, NA))
+lna[(coords$Var1 > .45) & (coords$Var2 > .45)] <- NA
 y <- y_full * lna
 
 simdata <- coords %>% 
   cbind(w, y) %>% 
   as.data.frame() 
 
-mcmc_keep <- 1000
-mcmc_burn <- 1000
+mcmc_keep <- 2000
+mcmc_burn <- 5000
 mcmc_thin <- 2
 
 # MESH
-Mv <- c(30, 30)
+Mv <- c(5, 5)
 set.seed(1)
+
 mesh_time <- system.time({
-  meshout <- meshgp(y, X, Z, coords, Mv=Mv,
+  meshout <- meshgp(y, X, Z, coords, axis_partition=Mv,
                      mcmc = list(keep=mcmc_keep, burn=mcmc_burn, thin=mcmc_thin),
-                     num_threads = 11)
+                     num_threads = 10)
 })
 print(mesh_time) 
 #   user  system elapsed 

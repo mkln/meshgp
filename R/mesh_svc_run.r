@@ -1,4 +1,4 @@
-meshgp <- function(y, X, Z, coords, Mv, 
+meshgp <- function(y, X, Z, coords, axis_partition, 
                    mcmc        = list(keep=1000, burn=0, thin=1),
                    num_threads = 7,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
@@ -22,6 +22,8 @@ meshgp <- function(y, X, Z, coords, Mv,
     ^     ^     ^
     |     |     | 
     o --> o --> o\n\n")
+  
+  Mv <- axis_partition
   
   if(1){
     mcmc_keep <- mcmc$keep
@@ -264,6 +266,11 @@ meshgp <- function(y, X, Z, coords, Mv,
     indexing                     <- (1:nr_full-1) %>% split(blocking)
     
     
+    
+    simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata)
+    
+    start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
+    
     # finally prepare data
     sort_ix     <- simdata$ix
     
@@ -271,13 +278,15 @@ meshgp <- function(y, X, Z, coords, Mv,
     X           <- simdata %>% dplyr::select(contains("X_")) %>% as.matrix()
     colnames(X) <- orig_X_colnames
     X[is.na(X)] <- 0 # NAs if added coords due to empty blocks
+    
     Z           <- simdata %>% dplyr::select(contains("Z_")) %>% as.matrix()
     Z[is.na(Z)] <- 0
     colnames(Z) <- orig_Z_colnames
+    
     na_which    <- simdata$na_which
+    offsets     <- simdata$offsets
     
     coords <- simdata %>% dplyr::select(contains("Var")) %>% as.matrix()
-    
     
     #block_groups <- check_gibbs_groups(block_groups, parents, children, block_names, blocking, 20)
   } else {

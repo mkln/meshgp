@@ -720,7 +720,6 @@ void MeshGPsvc::init_indexing(){
       }
       parents_indexing(u) = field_v_concat_uv(pixs);
     }
-    
     if(children(u).n_elem > 0){
       arma::field<arma::uvec> cixs(children(u).n_elem);
       for(int ci=0; ci<children(u).n_elem; ci++){
@@ -728,7 +727,6 @@ void MeshGPsvc::init_indexing(){
       }
       children_indexing(u) = field_v_concat_uv(cixs);
     }
-    
     Zblock(u) = Zify( Z.rows(indexing(u)) );
   }
   
