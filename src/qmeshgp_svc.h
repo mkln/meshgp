@@ -117,6 +117,8 @@ public:
   void na_study();
   void make_gibbs_groups();
   
+  
+  
   // init / caching obj
   void init_cache();
   
@@ -1274,6 +1276,7 @@ void MeshGPsvc::gibbs_sample_beta(){
   arma::mat Xprecy = Vim + tausq_inv * X_available.t() * ( y_available - Zw.rows(na_ix_all));// + ywmeandiff );
   Rcpp::RNGScope scope;
   Bcoeff = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy + arma::randn(p));
+  //Bcoeff = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy);// + arma::randn(p));
   
   if(verbose){
     end = std::chrono::steady_clock::now();
@@ -1348,6 +1351,7 @@ void MeshGPsvc::gibbs_sample_tausq(){
   
   Rcpp::RNGScope scope;
   tausq_inv = R::rgamma(aparam, bparam);
+  //tausq_inv = aparam*bparam; 
   
   if(verbose){
     end = std::chrono::steady_clock::now();
@@ -1452,7 +1456,7 @@ void MeshGPsvc::gibbs_sample_w_omp(){
         arma::vec rnvec = arma::vectorise(rand_norm_mat.rows(indexing(u)));
         //arma::vec rnvec = arma::randn(q*indexing(u).n_elem);
         arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec);
-        
+        //arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot);// + rnvec);
         //Rcpp::Rcout << "gibbs_sample_w_omp loop step 4 - block " << u << "\n";
         
         w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
@@ -1547,7 +1551,8 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
           // sample
           arma::vec rnvec = arma::vectorise(rand_norm_mat.rows(indexing(u)));
           //arma::vec rnvec = arma::randn(q*indexing(u).n_elem);
-          arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec);
+          arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec); //************************
+          
           w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
         } else {
           // only predictions at this block. 
@@ -1560,6 +1565,7 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
                        
           arma::vec normvec = arma::randn(q*indexing(u).n_elem);
           arma::vec w_temp = phimean + cholK * normvec;
+          //arma::vec w_temp = phimean;//************************
           w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
         }
         

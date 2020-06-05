@@ -150,15 +150,15 @@ Rcpp::List qmeshgp_svc_mcmc(
   
   if(d == 2){
     if(q == 1){
-      npars = 1; // phi
+      npars = 1+1; // phi + sigmasq
     } else {
-      npars = 5;
+      npars = 1+5;
     }
   } else {
     if(q > 2){
-      npars = 5;
+      npars = 1+5;
     } else {
-      npars = 3;
+      npars = 1+3; // sigmasq + alpha + beta + phi
     }
   }
   
@@ -166,10 +166,10 @@ Rcpp::List qmeshgp_svc_mcmc(
   
   Rcpp::Rcout << "Number of pars: " << npars << " plus " << k << " for multivariate\n"; 
   npars += k; // for xCovHUV + Dmat for variables (excludes sigmasq)
-
+  
   if(set_unif_bounds.n_rows < npars){
     arma::mat vbounds = arma::zeros(k, 2);
-    if(npars > 5){
+    if(npars > 1+5){
       // multivariate
       dlim = sqrt(q+.0);
       vbounds.col(0) += 1e-5;
@@ -180,8 +180,6 @@ Rcpp::List qmeshgp_svc_mcmc(
     }
     set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
   }
-  
-
   
   Rcpp::Rcout << set_unif_bounds << endl;
   
@@ -204,7 +202,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   
   arma::mat b_mcmc = arma::zeros(X.n_cols, mcmc_keep);
   arma::mat tausq_mcmc = arma::zeros(1, mcmc_keep);
-  arma::mat sigmasq_mcmc = arma::zeros(1, mcmc_keep);
+  
   arma::mat theta_mcmc = arma::zeros(npars, mcmc_keep);
   arma::vec llsave = arma::zeros(mcmc_keep);
   
@@ -243,8 +241,8 @@ Rcpp::List qmeshgp_svc_mcmc(
   bool interrupted = false;
   Rcpp::Rcout << "Running MCMC for " << mcmc << " iterations." << endl;
   
-  arma::vec sumparam = arma::zeros(npars + 1); // include sigmasq
-  arma::mat prodparam = arma::zeros(npars + 1, npars + 1);
+  arma::vec sumparam = arma::zeros(npars); // include sigmasq
+  arma::mat prodparam = arma::zeros(npars, npars);
   arma::mat paramsd = mcmcsd; // proposal sd
   arma::vec sd_param = arma::zeros(mcmc +1); // mcmc sd
   
@@ -318,8 +316,9 @@ Rcpp::List qmeshgp_svc_mcmc(
         // theta
         Rcpp::RNGScope scope;
         arma::vec new_param = param;
+        
         new_param = par_huvtransf_back(par_huvtransf_fwd(param, set_unif_bounds) + 
-          paramsd * arma::randn(npars + 1), set_unif_bounds);
+          paramsd * arma::randn(npars), set_unif_bounds);
         
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         
@@ -462,7 +461,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         
         printf("%5d-th iteration [ %dms ] ~ tsq=%.4f ssq=%.4f | MCMC acceptance %.2f%% (total: %.2f%%)\n", 
                m+1, itertime, 1.0/mesh.tausq_inv, mesh.param_data.sigmasq, accept_ratio_local*100, accept_ratio*100);
-        for(int pp=0; pp<npars; pp++){
+        for(int pp=0; pp<npars-1; pp++){
           printf("theta%1d=%.4f ", pp, mesh.param_data.theta(pp));
         }
         printf("\n");
@@ -474,9 +473,9 @@ Rcpp::List qmeshgp_svc_mcmc(
       if(mx >= 0){
         if(mx % mcmc_thin == 0){
           tausq_mcmc.col(msaved) = 1.0 / mesh.tausq_inv;
-          sigmasq_mcmc.col(msaved) = mesh.param_data.sigmasq;
+          
           b_mcmc.col(msaved) = mesh.Bcoeff;
-          theta_mcmc.col(msaved) = mesh.param_data.theta;
+          theta_mcmc.col(msaved) = arma::join_vert(arma::ones(1) * mesh.param_data.sigmasq, mesh.param_data.theta);
           llsave(msaved) = current_loglik;
           
           w_mcmc(msaved) = mesh.w;
@@ -502,7 +501,6 @@ Rcpp::List qmeshgp_svc_mcmc(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
-      Rcpp::Named("sigmasq_mcmc") = sigmasq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("paramsd") = paramsd,
       Rcpp::Named("ll") = llsave,
@@ -527,7 +525,6 @@ Rcpp::List qmeshgp_svc_mcmc(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc.cols(0, msaved-1),
       Rcpp::Named("tausq_mcmc") = tausq_mcmc.cols(0, msaved-1),
-      Rcpp::Named("sigmasq_mcmc") = sigmasq_mcmc.cols(0, msaved-1),
       Rcpp::Named("theta_mcmc") = theta_mcmc.cols(0, msaved-1),
       Rcpp::Named("paramsd") = paramsd,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,

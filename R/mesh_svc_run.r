@@ -342,7 +342,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                 
                 beta_mcmc    = beta_mcmc,
                 tausq_mcmc   = tausq_mcmc,
-                sigmasq_mcmc = sigmasq_mcmc,
+                
                 theta_mcmc   = theta_mcmc,
                 
                 w_mcmc    = w_mcmc,

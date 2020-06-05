@@ -59,7 +59,7 @@ qmeshgp_cinv <- function(coords, Mv, theta, D, n_threads=4){
                 F, # cache
                                F, # verb
                                F) # debug
-  
-  return( Cinv )
+  sort_order <- order(sort_ix)
+  return( Cinv[sort_order, sort_order] )
   
 }
