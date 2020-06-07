@@ -79,25 +79,44 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       start_beta   <- starting$beta
     }
     
-    space_uni      <- (q==1) & (dd==2)
-    space_mul      <- (q >1) & (dd==2)
-    stime_uni      <- (q==1) & (dd==3)
-    stime_biv      <- (q==2) & (dd==3) 
-    stime_mul      <- (q >2) & (dd==3) 
+    space_uni      <- (dd==2) & (q==1)
+    space_biv      <- (dd==2) & (q==2) 
+    space_mul      <- (dd==2) & (q >2)  
+    stime_uni      <- (dd==3) & (q==1)
+    stime_biv      <- (dd==3) & (q==2) 
+    stime_mul      <- (dd==3) & (q >2)  
     
     if(is.null(starting$theta)){
-      if(space_uni){
-        start_theta <- 10
-      } 
-      if(space_mul || stime_mul){
-        start_theta <- c(10, 0.5, 10, 0.5, 10)
-        start_theta <- c(start_theta, rep(1, k))
-      }
-      if(stime_uni){
-        start_theta <- c(10, 0.5, 10)
-      }
-      if(stime_biv){
-        start_theta <- c(10, 0.5, 10, 1)
+      if(dd == 3){
+        # spacetime
+        if(q > 2){
+          # multivariate
+          start_theta <- c(10, 0.5, 10, 0.5, 10)
+          start_theta <- c(start_theta, rep(1, k))
+        } else {
+          if(q == 2){
+            # bivariate
+            start_theta <- c(10, 0.5, 10, 1)
+          } else {
+            # univariate
+            start_theta <- c(10, 0.5, 10)
+          }
+        }
+      } else {
+        # space
+        if(q > 2){
+          # multivariate
+          start_theta <- c(10, 0.5, 10)
+          start_theta <- c(start_theta, rep(1, k))
+        } else {
+          if(q == 2){
+            # bivariate
+            start_theta <- c(10, 1)
+          } else {
+            # univariate
+            start_theta <- c(10)
+          }
+        }
       }
     } else {
       start_theta  <- starting$theta
@@ -105,24 +124,54 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     
     toplim <- 1e5
     btmlim <- 1e-5
+    
     if(is.null(prior$set_unif_bounds)){
-      if(space_uni){
-        set_unif_bounds <- matrix(rbind(
-          c(btmlim, toplim), c(btmlim, toplim)), ncol=2)
-      } 
-      if(space_mul || stime_mul){
-        set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
-                                        c(btmlim, toplim), 
-                                        c(btmlim, 1-btmlim), 
-                                        c(btmlim, toplim), 
-                                        c(btmlim, 1-btmlim), 
-                                        c(btmlim, toplim)), ncol=2)
+      if(dd == 3){
+        # spacetime
+        if(q > 2){
+          # multivariate
+          set_unif_bounds <- matrix(rbind(c(btmlim, toplim), # sigmasq
+                                          c(btmlim, toplim), # alpha_1
+                                          c(btmlim, 1-btmlim), # beta_1
+                                          c(btmlim, toplim), # alpha_2
+                                          c(btmlim, 1-btmlim), # beta_2
+                                          c(btmlim, toplim)), # phi
+                                    ncol=2)
+        } else {
+          # bivariate or univariate
+          set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+                                          c(btmlim, toplim),
+                                          c(btmlim, 1-btmlim),
+                                          c(btmlim, toplim)), ncol=2)
+        }
+      } else {
+        # space
+        if(q > 2){
+          # multivariate
+          set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+                                          c(btmlim, toplim),
+                                          c(btmlim, 1-btmlim),
+                                          c(btmlim, toplim)), ncol=2)
+          
+        } else {
+          # bivariate or univariate
+          set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+                                          c(btmlim, toplim)), ncol=2)
+        }
       }
-      if(stime_uni || stime_biv){
-        set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
-          c(btmlim, 1e5), 
-                                        c(btmlim, 1-btmlim), 
-                                        c(btmlim, 1e5)), ncol=2)
+      
+      if(q > 1){
+        kk <- q * (q-1) / 2
+        vbounds <- matrix(0, nrow=kk, ncol=2)
+        
+        if(q > 2){
+          dlim <- sqrt(q+.0)
+        } else {
+          dlim <- 1e5
+        }
+        vbounds[,1] <- 1e-5;
+        vbounds[,2] <- dlim - 1e-5
+        set_unif_bounds <- rbind(set_unif_bounds, vbounds)
       }
     } else {
       set_unif_bounds <- prior$set_unif_bounds

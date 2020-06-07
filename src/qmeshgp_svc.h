@@ -154,6 +154,9 @@ public:
   
   // changing the values, no sampling
   void tausq_update(double);
+  arma::vec cparams;
+  arma::mat Dmat;
+  void theta_transform(const MeshData&);
   void theta_update(MeshData&, const arma::vec&);
   void beta_update(const arma::vec&);
   
@@ -303,18 +306,19 @@ MeshGPsvc::MeshGPsvc(
   dd = coords.n_cols;
   
   if(dd == 2){
-    if(q < 2){
-      npars = 1;
+    if(q > 2){
+      npars = 1+3;
     } else {
-      npars = 5;
+      npars = 1+1;
     }
   } else {
-    if(q < 3){
-      npars = 3;
+    if(q > 2){
+      npars = 1+5;
     } else {
-      npars = 5;
+      npars = 1+3; // sigmasq + alpha + beta + phi
     }
   }
+  
   printf("%d observed locations, %d to predict, %d total\n",
          n, y.n_elem-n, y.n_elem);
   
@@ -334,7 +338,7 @@ MeshGPsvc::MeshGPsvc(
   param_data.logdetCi       = 0;
   param_data.loglik_w_comps = arma::zeros(n_blocks);
   param_data.loglik_w       = 0;
-  param_data.theta          = theta_in;
+  param_data.theta          = arma::join_vert(arma::ones(1) * sigmasq_in, theta_in);
   param_data.cholfail       = false;
   param_data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
   param_data.sigmasq          = sigmasq_in;
@@ -484,16 +488,16 @@ MeshGPsvc::MeshGPsvc(const arma::mat& y_in,
   
   printf("8 ");
   if(dd == 2){
-    if(q < 2){
-      npars = 1;
+    if(q > 2){
+      npars = 1+3;
     } else {
-      npars = 5;
+      npars = 1+1;
     }
   } else {
-    if(q < 3){
-      npars = 3;
+    if(q > 2){
+      npars = 1+5;
     } else {
-      npars = 5;
+      npars = 1+3; // sigmasq + alpha + beta + phi
     }
   }
   
@@ -764,7 +768,6 @@ void MeshGPsvc::init_finalize(){
   
   message("[init_finalize] u_is_which_col_f");
   
-#pragma omp parallel for // **
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     //Rcpp::Rcout << "block: " << u << "\n";
@@ -800,9 +803,25 @@ void MeshGPsvc::init_finalize(){
         
         //Rcpp::Rcout << "visual representation of which ones we are looking at " << endl
         //            << colix.t() << endl;
+        
+        //u_is_which_col_f(u)(c) = arma::field<arma::uvec> (2);
+        //u_is_which_col_f(u)(c)(0) = arma::find(colix == 1); // u parent of c is in these columns for c
+        //u_is_which_col_f(u)(c)(1) = arma::find(colix != 1); // u parent of c is NOT in these columns for c
+        
+        // / / /
+        arma::uvec temp = arma::regspace<arma::uvec>(0, q*dimen-1);
+        arma::umat result = arma::trans(arma::umat(temp.memptr(), q, temp.n_elem/q));
+        arma::uvec rowsel = arma::zeros<arma::uvec>(result.n_rows);
+        rowsel.subvec(firstcol, lastcol-1).fill(1);
+        arma::umat result_local = result.rows(arma::find(rowsel==1));
+        arma::uvec result_local_flat = arma::vectorise(arma::trans(result_local));
+        arma::umat result_other = result.rows(arma::find(rowsel==0));
+        arma::uvec result_other_flat = arma::vectorise(arma::trans(result_other));
         u_is_which_col_f(u)(c) = arma::field<arma::uvec> (2);
-        u_is_which_col_f(u)(c)(0) = arma::find(colix == 1); // u parent of c is in these columns for c
-        u_is_which_col_f(u)(c)(1) = arma::find(colix != 1); // u parent of c is NOT in these columns for c
+        u_is_which_col_f(u)(c)(0) = result_local_flat; // u parent of c is in these columns for c
+        u_is_which_col_f(u)(c)(1) = result_other_flat; // u parent of c is NOT in these columns for c
+        
+        
         
       }
     }
@@ -1018,6 +1037,24 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
 
 */
 
+void MeshGPsvc::theta_transform(const MeshData& data){
+  //arma::vec Kparam = data.theta; 
+  int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
+  
+  cparams = data.theta.subvec(0, npars - 1);
+  
+  if(k>0){
+    Dmat = vec_to_symmat(data.theta.subvec(npars, npars + k - 1));
+  } else {
+    Dmat = arma::zeros(1,1);
+  }
+  
+  //Rcpp::Rcout << "theta_transform" << endl
+   //           << data.theta << endl
+  //            << cparams << endl
+   //           << Dmat << endl;
+}
+
 void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   start = std::chrono::steady_clock::now();
   message("[get_cond_comps_loglik_w] start.");
@@ -1028,16 +1065,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   arma::field<arma::mat> w_cond_mean_cache(kr_caching.n_elem); // +++++++++
   //arma::field<arma::mat> Kcp_cache(kr_caching.n_elem);
   
-  arma::vec Kparam = arma::join_vert(arma::ones(1)*data.sigmasq, data.theta); 
-  int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
-  
-  arma::vec cparams = Kparam.subvec(0, npars);
-  arma::mat Dmat;
-  if(k>0){
-    Dmat = vec_to_symmat(Kparam.subvec(npars+1, npars+k));
-  } else {
-    Dmat = arma::zeros(1,1);
-  }
+  theta_transform(data);
   
   for(int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i); // layer name of ith representative
@@ -1197,15 +1225,7 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
   start = std::chrono::steady_clock::now();
   message("[get_cond_comps_loglik_w_nocache] start. ");
   
-  arma::vec Kparam = arma::join_vert(arma::ones(1)*data.sigmasq, data.theta); 
-  int k = data.theta.n_elem - npars; // number of cross-distances = p(p-1)/2
-  arma::vec cparams = Kparam.subvec(0, npars);
-  arma::mat Dmat;
-  if(k>0){
-    Dmat = vec_to_symmat(Kparam.subvec(npars+1, npars+k));
-  } else {
-    Dmat = arma::zeros(1,1);
-  }
+  theta_transform(data);
 
 #pragma omp parallel for // **
   for(int i=0; i<n_blocks; i++){
@@ -1557,7 +1577,7 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
         } else {
           // only predictions at this block. 
           // sample from conditional MVN 
-          arma::vec w_par = arma::vectorise( w.rows(parents_indexing(u)) );
+          arma::vec w_par = arma::vectorise(arma::trans(w.rows(parents_indexing(u))));
           
           arma::vec phimean = param_data.w_cond_mean_K(u) * w_par;
           

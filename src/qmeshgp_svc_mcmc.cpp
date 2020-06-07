@@ -149,10 +149,10 @@ Rcpp::List qmeshgp_svc_mcmc(
   arma::mat set_unif_bounds = set_unif_bounds_in;
   
   if(d == 2){
-    if(q == 1){
-      npars = 1+1; // phi + sigmasq
+    if(q > 2){
+      npars = 1 + 3;
     } else {
-      npars = 1+5;
+      npars = 1 + 1;
     }
   } else {
     if(q > 2){
@@ -167,6 +167,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   Rcpp::Rcout << "Number of pars: " << npars << " plus " << k << " for multivariate\n"; 
   npars += k; // for xCovHUV + Dmat for variables (excludes sigmasq)
   
+  /*
   if(set_unif_bounds.n_rows < npars){
     arma::mat vbounds = arma::zeros(k, 2);
     if(npars > 1+5){
@@ -179,7 +180,7 @@ Rcpp::List qmeshgp_svc_mcmc(
       vbounds.col(1) += set_unif_bounds(0, 1);//.fill(arma::datum::inf);
     }
     set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
-  }
+  }*/
   
   Rcpp::Rcout << set_unif_bounds << endl;
   
@@ -219,8 +220,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   mesh.get_loglik_comps_w( mesh.param_data );
   mesh.get_loglik_comps_w( mesh.alter_data );
   
-  arma::vec param = arma::join_vert(arma::ones(1) * mesh.param_data.sigmasq, 
-                                    mesh.param_data.theta);
+  arma::vec param = mesh.param_data.theta;
   double current_loglik = tempr*mesh.param_data.loglik_w;
   if(verbose & debug){
     Rcpp::Rcout << "starting from ll: " << current_loglik << endl; 
@@ -322,8 +322,8 @@ Rcpp::List qmeshgp_svc_mcmc(
         
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         
-        mesh.alter_data.sigmasq = new_param(0);
-        mesh.theta_update(mesh.alter_data, new_param.subvec(1, new_param.n_elem-1)); 
+        //mesh.alter_data.sigmasq = new_param(0);
+        mesh.theta_update(mesh.alter_data, new_param); 
         
         mesh.get_loglik_comps_w( mesh.alter_data );
         
@@ -459,9 +459,9 @@ Rcpp::List qmeshgp_svc_mcmc(
         
         int itertime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-tick_mcmc ).count();
         
-        printf("%5d-th iteration [ %dms ] ~ tsq=%.4f ssq=%.4f | MCMC acceptance %.2f%% (total: %.2f%%)\n", 
-               m+1, itertime, 1.0/mesh.tausq_inv, mesh.param_data.sigmasq, accept_ratio_local*100, accept_ratio*100);
-        for(int pp=0; pp<npars-1; pp++){
+        printf("%5d-th iteration [ %dms ] ~ tsq=%.4f | MCMC acceptance %.2f%% (total: %.2f%%)\n", 
+               m+1, itertime, 1.0/mesh.tausq_inv, accept_ratio_local*100, accept_ratio*100);
+        for(int pp=0; pp<npars; pp++){
           printf("theta%1d=%.4f ", pp, mesh.param_data.theta(pp));
         }
         printf("\n");
@@ -475,7 +475,7 @@ Rcpp::List qmeshgp_svc_mcmc(
           tausq_mcmc.col(msaved) = 1.0 / mesh.tausq_inv;
           
           b_mcmc.col(msaved) = mesh.Bcoeff;
-          theta_mcmc.col(msaved) = arma::join_vert(arma::ones(1) * mesh.param_data.sigmasq, mesh.param_data.theta);
+          theta_mcmc.col(msaved) = mesh.param_data.theta;
           llsave(msaved) = current_loglik;
           
           w_mcmc(msaved) = mesh.w;
