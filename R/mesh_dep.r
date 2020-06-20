@@ -36,6 +36,32 @@ mesh_graph_build <- function(coords_blocking, Mv, na_which, rfc=F, verbose=T){
               groups = groups))
 }
 
+mesh_graph_build_mv <- function(coords_blocking, Mv, verbose=T){
+  cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
+  if("L3" %in% colnames(coords_blocking)){
+    cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
+  } else {
+    cbl %<>% group_by(L1, L2, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
+  }
+  blocks_descr <- unique(cbl) %>% as.matrix()
+  
+  graphed <- mesh_graph_cpp(blocks_descr, Mv, F, verbose)
+  groups <- mesh_gibbs_groups(blocks_descr, Mv, F)
+  
+  if("L3" %in% colnames(coords_blocking)){
+    colnames(groups) <- c("L1", "L2", "L3", "group")
+  } else {
+    colnames(groups) <- c("L1", "L2", "group")
+  }
+  suppressMessages(
+    groups <- blocks_descr %>% as.data.frame() %>% left_join(groups %>% as.data.frame()) %$% group)
+  
+  list2env(graphed, environment())
+  return(list(parents = parents,
+              children = children,
+              names = names,
+              groups = groups))
+}
 
 mesh_graph_build_sampling <- function(coords_blocking, Mv, na_which, rfc=F, verbose=F){
   cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
