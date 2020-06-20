@@ -57,7 +57,7 @@ struct MeshDataMV {
   bool cholfail;
   
   arma::field<arma::mat> Sigi_chol;
-  
+  arma::field<arma::mat> Sigi_chol_cached;
 };
 
 void print_data(const MeshData& data);

@@ -81,8 +81,15 @@ Rcpp::List qmeshgp_mv_mcmc(
   //Rcpp::Rcout << "Lower and upper bounds for priors:\n";
   
   if(d == 2){
-    int n_cbase = q > 2? 3: 1;
-    npars = 3*q + n_cbase;
+    if(q == 1){
+      npars = 2;
+    } else {
+      int n_cbase = q > 2? 3: 1;
+      npars = 3*q + n_cbase;
+    }
+  } else {
+    Rcpp::Rcout << "d>2 not implemented for multivariate outcomes, yet " << endl;
+    throw 1;
   }
   
   k = q * (q-1)/2;
@@ -146,6 +153,7 @@ Rcpp::List qmeshgp_mv_mcmc(
   mesh.get_loglik_comps_w( mesh.param_data );
   mesh.get_loglik_comps_w( mesh.alter_data );
   mesh.gibbs_sample_w(true);
+  mesh.predict(true);
   mesh.get_loglik_w(mesh.param_data);
   
   //arma::vec param = mesh.param_data.theta;
@@ -202,6 +210,9 @@ Rcpp::List qmeshgp_mv_mcmc(
         mesh.gibbs_sample_w(needs_update);
         mesh.get_loglik_w(mesh.param_data);
         current_loglik = tempr*mesh.param_data.loglik_w;
+        if(mesh.predicting){
+          mesh.predict(needs_update);
+        }
       }
       
       end = std::chrono::steady_clock::now();

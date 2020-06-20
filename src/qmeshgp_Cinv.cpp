@@ -7,7 +7,7 @@
 #include "mgp_utils.h"
 #include "field_v_concatm.h"
 #include "caching_pairwise_compare.h"
-#include "nonseparable_huv_cov.h"
+#include "covariance_functions.h"
 
 #define EIGEN_USE_MKL_ALL 1
 

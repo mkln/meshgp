@@ -219,6 +219,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   
   mesh.get_loglik_comps_w( mesh.param_data );
   mesh.get_loglik_comps_w( mesh.alter_data );
+  mesh.predict(true);
   
   arma::vec param = mesh.param_data.theta;
   double current_loglik = tempr*mesh.param_data.loglik_w;
@@ -247,6 +248,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   arma::vec sd_param = arma::zeros(mcmc +1); // mcmc sd
   
   double ll_upd_msg;
+  bool needs_update;
   
   Rcpp::List recovered;
   
@@ -273,6 +275,9 @@ Rcpp::List qmeshgp_svc_mcmc(
         mesh.gibbs_sample_w();
         mesh.get_loglik_w(mesh.param_data);
         current_loglik = tempr*mesh.param_data.loglik_w;
+        if(mesh.predicting){
+          mesh.predict(needs_update);
+        }
       }
       
       end = std::chrono::steady_clock::now();
@@ -364,6 +369,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         }
       
         if(accepted){
+          needs_update = true;
           std::chrono::steady_clock::time_point start_copy = std::chrono::steady_clock::now();
           
           accept_count++;
@@ -380,6 +386,7 @@ Rcpp::List qmeshgp_svc_mcmc(
           } 
           
         } else {
+          needs_update = false;
           if(verbose_mcmc & sample_theta & debug & verbose){
             Rcpp::Rcout << "[theta] rejected (log accept. " << logaccept << ")" << endl;
           }

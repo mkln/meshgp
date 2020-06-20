@@ -21,6 +21,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// xCovHUV
+arma::mat xCovHUV(const arma::mat& coords, const arma::uvec& ind1, const arma::uvec& ind2, const arma::vec& cparams, const arma::mat& Dmat, bool same);
+RcppExport SEXP _meshgp_xCovHUV(SEXP coordsSEXP, SEXP ind1SEXP, SEXP ind2SEXP, SEXP cparamsSEXP, SEXP DmatSEXP, SEXP sameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type ind1(ind1SEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type ind2(ind2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type cparams(cparamsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    rcpp_result_gen = Rcpp::wrap(xCovHUV(coords, ind1, ind2, cparams, Dmat, same));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mvCovAG20107
+arma::mat mvCovAG20107(const arma::mat& coords, const arma::uvec& qv_block, const arma::uvec& ind1, const arma::uvec& ind2, const arma::vec& ai1, const arma::vec& ai2, const arma::vec& phi_i, const arma::vec& thetamv, const arma::mat& Dmat, bool same);
+RcppExport SEXP _meshgp_mvCovAG20107(SEXP coordsSEXP, SEXP qv_blockSEXP, SEXP ind1SEXP, SEXP ind2SEXP, SEXP ai1SEXP, SEXP ai2SEXP, SEXP phi_iSEXP, SEXP thetamvSEXP, SEXP DmatSEXP, SEXP sameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qv_block(qv_blockSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type ind1(ind1SEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type ind2(ind2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ai1(ai1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ai2(ai2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi_i(phi_iSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type thetamv(thetamvSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvCovAG20107(coords, qv_block, ind1, ind2, ai1, ai2, phi_i, thetamv, Dmat, same));
+    return rcpp_result_gen;
+END_RCPP
+}
 // hex_to_dec
 int hex_to_dec(const std::string& hex_value);
 RcppExport SEXP _meshgp_hex_to_dec(SEXP hex_valueSEXP) {
@@ -142,49 +178,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
     Rcpp::traits::input_parameter< const arma::mat >::type sigma(sigmaSEXP);
     rcpp_result_gen = Rcpp::wrap(mvn(n, mu, sigma));
-    return rcpp_result_gen;
-END_RCPP
-}
-// vec_to_symmat
-arma::mat vec_to_symmat(const arma::vec& x);
-RcppExport SEXP _meshgp_vec_to_symmat(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(vec_to_symmat(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// xCovHUV_base
-double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q, int dim);
-RcppExport SEXP _meshgp_xCovHUV_base(SEXP hSEXP, SEXP uSEXP, SEXP vSEXP, SEXP paramsSEXP, SEXP qSEXP, SEXP dimSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type h(hSEXP);
-    Rcpp::traits::input_parameter< double >::type u(uSEXP);
-    Rcpp::traits::input_parameter< double >::type v(vSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type params(paramsSEXP);
-    Rcpp::traits::input_parameter< int >::type q(qSEXP);
-    Rcpp::traits::input_parameter< int >::type dim(dimSEXP);
-    rcpp_result_gen = Rcpp::wrap(xCovHUV_base(h, u, v, params, q, dim));
-    return rcpp_result_gen;
-END_RCPP
-}
-// xCovHUV
-arma::mat xCovHUV(const arma::mat& coords, const arma::uvec& ind1, const arma::uvec& ind2, const arma::vec& cparams, const arma::mat& Dmat, bool same);
-RcppExport SEXP _meshgp_xCovHUV(SEXP coordsSEXP, SEXP ind1SEXP, SEXP ind2SEXP, SEXP cparamsSEXP, SEXP DmatSEXP, SEXP sameSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type ind1(ind1SEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type ind2(ind2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type cparams(cparamsSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
-    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
-    rcpp_result_gen = Rcpp::wrap(xCovHUV(coords, ind1, ind2, cparams, Dmat, same));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -331,29 +324,11 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// mvCovAG20107
-arma::mat mvCovAG20107(const arma::mat& coords, const arma::uvec& qv_block, const arma::uvec& ind1, const arma::uvec& ind2, const arma::vec& ai1, const arma::vec& ai2, const arma::vec& phi_i, const arma::vec& thetamv, const arma::mat& Dmat, bool same);
-RcppExport SEXP _meshgp_mvCovAG20107(SEXP coordsSEXP, SEXP qv_blockSEXP, SEXP ind1SEXP, SEXP ind2SEXP, SEXP ai1SEXP, SEXP ai2SEXP, SEXP phi_iSEXP, SEXP thetamvSEXP, SEXP DmatSEXP, SEXP sameSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type qv_block(qv_blockSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type ind1(ind1SEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type ind2(ind2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type ai1(ai1SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type ai2(ai2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type phi_i(phi_iSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type thetamv(thetamvSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
-    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
-    rcpp_result_gen = Rcpp::wrap(mvCovAG20107(coords, qv_block, ind1, ind2, ai1, ai2, phi_i, thetamv, Dmat, same));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_caching_pairwise_compare_uci", (DL_FUNC) &_meshgp_caching_pairwise_compare_uci, 4},
+    {"_meshgp_xCovHUV", (DL_FUNC) &_meshgp_xCovHUV, 6},
+    {"_meshgp_mvCovAG20107", (DL_FUNC) &_meshgp_mvCovAG20107, 10},
     {"_meshgp_hex_to_dec", (DL_FUNC) &_meshgp_hex_to_dec, 1},
     {"_meshgp_hex_to_dec_vec", (DL_FUNC) &_meshgp_hex_to_dec_vec, 1},
     {"_meshgp_list_mean", (DL_FUNC) &_meshgp_list_mean, 1},
@@ -364,15 +339,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_part_axis_parallel_fixed", (DL_FUNC) &_meshgp_part_axis_parallel_fixed, 3},
     {"_meshgp_mesh_graph_cpp", (DL_FUNC) &_meshgp_mesh_graph_cpp, 4},
     {"_meshgp_mvn", (DL_FUNC) &_meshgp_mvn, 3},
-    {"_meshgp_vec_to_symmat", (DL_FUNC) &_meshgp_vec_to_symmat, 1},
-    {"_meshgp_xCovHUV_base", (DL_FUNC) &_meshgp_xCovHUV_base, 6},
-    {"_meshgp_xCovHUV", (DL_FUNC) &_meshgp_xCovHUV, 6},
     {"_meshgp_eigenchol", (DL_FUNC) &_meshgp_eigenchol, 1},
     {"_meshgp_qmgp_Cinv", (DL_FUNC) &_meshgp_qmgp_Cinv, 11},
     {"_meshgp_qmgp_sampler", (DL_FUNC) &_meshgp_qmgp_sampler, 11},
     {"_meshgp_qmeshgp_mv_mcmc", (DL_FUNC) &_meshgp_qmeshgp_mv_mcmc, 32},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 38},
-    {"_meshgp_mvCovAG20107", (DL_FUNC) &_meshgp_mvCovAG20107, 10},
     {NULL, NULL, 0}
 };
 

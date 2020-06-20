@@ -7,7 +7,7 @@
 #include "mh_adapt.h"
 #include "field_v_concatm.h"
 #include "caching_pairwise_compare.h"
-#include "nonseparable_huv_cov.h"
+#include "covariance_functions.h"
 #include "debug.h"
  
 #include "mgp_utils.h"
@@ -49,6 +49,10 @@ public:
   // block membership
   arma::uvec blocking;
   
+  arma::uvec reference_blocks; // named
+  int n_ref_blocks;
+  
+  
   arma::field<arma::sp_mat> Zblock;
   arma::vec Zw;
   
@@ -78,10 +82,13 @@ public:
   arma::field<arma::uvec>   parents; // i = parent block names for i-labeled block (not ith block)
   arma::field<arma::uvec>   children; // i = children block names for i-labeled block (not ith block)
   arma::vec                 block_names; //  i = block name (+1) of block i. all dependence based on this name
+  arma::uvec                ref_block_names;
+  
   arma::vec                 block_groups; // same group = sample in parallel given all others
   arma::vec                 block_ct_obs; // 0 if no available obs in this block, >0=count how many available
   int                       n_gibbs_groups;
   arma::field<arma::vec>    u_by_block_groups;
+  arma::uvec                u_predicts;
   arma::vec                 block_groups_labels;
   // for each block's children, which columns of parents of c is u? and which instead are of other parents
   arma::field<arma::field<arma::field<arma::uvec> > > u_is_which_col_f; 
@@ -112,6 +119,7 @@ public:
   
   // init / indexing
   void init_indexing();
+  void init_meshdata(double, const arma::vec&);
   void init_finalize();
   void fill_zeros_Kcache();
   void na_study();
@@ -147,6 +155,7 @@ public:
   void gibbs_sample_w();
   void gibbs_sample_w_omp();
   void gibbs_sample_w_omp_nocache();
+  void predict(bool);
   
   void gibbs_sample_beta();
   //void gibbs_sample_sigmasq();
@@ -327,23 +336,6 @@ MeshGPsvc::MeshGPsvc(
   Ib                  = arma::field<arma::sp_mat> (n_blocks);
   u_is_which_col_f    = arma::field<arma::field<arma::field<arma::uvec> > > (n_blocks);
   
-  // block params
-  param_data.wcore         = arma::zeros(n_blocks);
-  param_data.w_cond_mean_K = arma::field<arma::mat> (n_blocks);
-  param_data.w_cond_prec   = arma::field<arma::mat> (n_blocks);
-  param_data.w_cond_cholprec = arma::field<arma::mat> (n_blocks);
-  
-  // loglik w for updating theta
-  param_data.logdetCi_comps = arma::zeros(n_blocks);
-  param_data.logdetCi       = 0;
-  param_data.loglik_w_comps = arma::zeros(n_blocks);
-  param_data.loglik_w       = 0;
-  param_data.theta          = arma::join_vert(arma::ones(1) * sigmasq_in, theta_in);
-  param_data.cholfail       = false;
-  param_data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
-  param_data.sigmasq          = sigmasq_in;
-  alter_data                = param_data; 
-  
   tausq_inv        = tausq_inv_in;
   
   Bcoeff           = beta_in;
@@ -360,6 +352,9 @@ MeshGPsvc::MeshGPsvc(
   message("MeshGPsvc::MeshGPsvc : na_study()");
   na_study();
   y.elem(arma::find_nonfinite(y)).fill(0);
+  
+  message("MeshGPsvc::MeshGPsvc : init_meshdata()");
+  init_meshdata(sigmasq_in, theta_in);
   
   message("MeshGPsvc::MeshGPsvc : init_finalize()");
   init_finalize();
@@ -566,23 +561,41 @@ void MeshGPsvc::make_gibbs_groups(){
     }
   }
   
-  u_by_block_groups = arma::field<arma::vec> (n_gibbs_groups);
+  int p=0; int gx=0;
+  u_predicts = arma::zeros<arma::uvec>(n_blocks - n_ref_blocks);
+  arma::field<arma::vec> u_by_block_groups_temp(n_gibbs_groups);
+  u_by_block_groups = arma::field<arma::vec>(n_gibbs_groups-1);
+  
   /// create list of groups for gibbs
-#pragma omp parallel for
+  //****#pragma omp parallel for
   for(int g=0; g<n_gibbs_groups; g++){
-    u_by_block_groups(g) = arma::zeros(0);
+    u_by_block_groups_temp(g) = arma::zeros(0);
     
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i) - 1;
+      
       if(block_groups(u) == block_groups_labels(g)){
-        if(indexing(u).n_elem > 0){ //**
+        if(block_ct_obs(u) > 0){ //**
           
           arma::vec uhere = arma::zeros(1) + u;
-          u_by_block_groups(g) = arma::join_vert(u_by_block_groups(g), uhere);
+          u_by_block_groups_temp(g) = arma::join_vert(u_by_block_groups_temp(g), uhere);
         } 
       }
+      
+    }
+    if(u_by_block_groups_temp(g).n_elem > 0){
+      u_by_block_groups(gx) = u_by_block_groups_temp(g);
+      gx ++;
     }
   }
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i) - 1;
+    if(block_ct_obs(u) == 0){
+      u_predicts(p) = u;
+      p ++;
+    }
+  }
+  
 }
 
 void MeshGPsvc::na_study(){
@@ -603,12 +616,27 @@ void MeshGPsvc::na_study(){
     
   }
   
+  n_ref_blocks = 0;
   for(int i=0; i<n_blocks;i++){//y_blocks.n_elem; i++){
     block_ct_obs(i) = arma::accu(na_1_blocks(i));
     if(block_ct_obs(i) > 0){
       n_loc_ne_blocks += indexing(i).n_elem;//coords_blocks(i).n_rows;
+      n_ref_blocks += 1;
     }
   }
+  
+  int j=0;
+  reference_blocks = arma::zeros<arma::uvec>(n_ref_blocks);
+  ref_block_names = arma::zeros<arma::uvec>(n_ref_blocks);
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i) - 1;
+    if(block_ct_obs(u) > 0){
+      reference_blocks(j) = i;
+      ref_block_names(j) = u;
+      j ++;
+    } 
+  }
+  
 }
 
 void MeshGPsvc::fill_zeros_Kcache(){
@@ -659,7 +687,8 @@ void MeshGPsvc::init_cache(){
       kr_pairing(u) = arma::zeros(arma::size(parents_indexing(u)));//arma::zeros(arma::size(parents_coords(u))); // no parents
     }
   }
-  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  //kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
   kr_caching = arma::unique(kr_caching_ix);
   
   if(cached_gibbs){
@@ -684,7 +713,8 @@ void MeshGPsvc::init_cache(){
         }
       }
     }
-    gibbs_caching_ix = caching_pairwise_compare_uc(gibbs_pairing, block_names, block_ct_obs);
+    //gibbs_caching_ix = caching_pairwise_compare_uc(gibbs_pairing, block_names, block_ct_obs);
+    gibbs_caching_ix = caching_pairwise_compare_u(gibbs_pairing, block_names);
     gibbs_caching = arma::unique(gibbs_caching_ix);
   } else {
     gibbs_caching = arma::zeros(0);
@@ -705,6 +735,30 @@ void MeshGPsvc::init_cache(){
          kr_caching.n_elem, k_cache_perc, 
          gibbs_caching.n_elem, g_cache_perc );
   
+}
+
+void MeshGPsvc::init_meshdata(double sigmasq_in, const arma::vec& theta_in){
+  // block params
+  param_data.wcore         = arma::zeros(n_blocks);
+  param_data.w_cond_mean_K = arma::field<arma::mat> (n_blocks);
+  param_data.w_cond_prec   = arma::field<arma::mat> (n_blocks);
+  param_data.w_cond_cholprec = arma::field<arma::mat> (n_blocks);
+  
+  for(int i=0; i<n_blocks; i++){
+    param_data.w_cond_mean_K(i) = arma::zeros(q*indexing(i).n_elem, q*parents_indexing(i).n_elem);
+    param_data.w_cond_cholprec(i) = arma::zeros(q*indexing(i).n_elem, q*indexing(i).n_elem);
+  }
+  
+  // loglik w for updating theta
+  param_data.logdetCi_comps = arma::zeros(n_blocks);
+  param_data.logdetCi       = 0;
+  param_data.loglik_w_comps = arma::zeros(n_blocks);
+  param_data.loglik_w       = 0;
+  param_data.theta          = arma::join_vert(arma::ones(1) * sigmasq_in, theta_in);
+  param_data.cholfail       = false;
+  param_data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
+  param_data.sigmasq          = sigmasq_in;
+  alter_data                = param_data; 
 }
 
 void MeshGPsvc::init_indexing(){
@@ -788,6 +842,7 @@ void MeshGPsvc::init_finalize(){
         //Rcpp::Rcout << "from: " << firstcol << " to: " << lastcol << endl; 
         
         int dimen = parents_indexing(child).n_elem;
+        /*
         arma::vec colix = arma::zeros(q*dimen);//parents_coords(child).n_rows);//(w_cond_mean_K(child).n_cols);
         //arma::uvec indx_scheme = arma::regspace<arma::uvec>(0, q, q*(dimen-1));
         
@@ -797,7 +852,7 @@ void MeshGPsvc::init_finalize(){
           int shift = s * dimen;
           colix.subvec(shift + firstcol, shift + lastcol-1).fill(1);
           //colix.elem(c_indices).fill(1);
-        }
+        }*/
         //Rcpp::Rcout << indx_scheme << "\n";
         //Rcpp::Rcout << colix << "\n";
         
@@ -834,12 +889,13 @@ void MeshGPsvc::get_loglik_w(MeshData& data){
     Rcpp::Rcout << "[get_loglik_w] entering \n";
   }
 #pragma omp parallel for //**
-  for(int i=0; i<n_blocks; i++){
-    int u = block_names(i)-1;
+  for(int i = 0; i<n_ref_blocks; i++){
+    int r = reference_blocks(i);
+    int u = block_names(r)-1;
     
     //bool calc_this_block = predicting == false? (block_ct_obs(u) > 0) : predicting;
     //if((block_ct_obs(u) > 0) & calc_this_block){
-    if( (block_ct_obs(u) > 0) & compute_block(predicting, block_ct_obs(u), rfc_dep) ){
+    //if( (block_ct_obs(u) > 0) & compute_block(predicting, block_ct_obs(u), rfc_dep) ){
       //double expcore = -.5 * arma::conv_to<double>::from( (w_blocks(u) - data.w_cond_mean(u)).t() * data.w_cond_prec(u) * (w_blocks(u) - data.w_cond_mean(u)) );
       arma::mat w_x = arma::vectorise( arma::trans( w.rows(indexing(u)) ) );
       
@@ -851,13 +907,13 @@ void MeshGPsvc::get_loglik_w(MeshData& data){
       //w_x = w_x % na_1_blocks(u);
       data.wcore(u) = arma::conv_to<double>::from(w_x.t() * data.w_cond_prec(u) * w_x);
       
-      data.loglik_w_comps(u) = //block_ct_obs(u)//
+      data.loglik_w_comps(u) = //bloc   k_ct_obs(u)//
         (q*indexing(u).n_elem + .0) 
         * hl2pi -.5 * data.wcore(u);
-    } else {
-      data.wcore(u) = 0;
-      data.loglik_w_comps(u) = 0;
-    }
+    //} else {
+    //  data.wcore(u) = 0;
+    //  data.loglik_w_comps(u) = 0;
+    //}
   }
   
   data.logdetCi = arma::accu(data.logdetCi_comps);
@@ -1083,7 +1139,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
 #pragma omp parallel for
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
-    if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+    if(block_ct_obs(u) > 0){//compute_block(predicting, block_ct_obs(u), false)){s
       int u_cached_ix = coords_caching_ix(u);
       arma::uvec cx = arma::find( coords_caching == u_cached_ix );
       arma::mat Kcc = K_coords_cache(cx(0));
@@ -1092,13 +1148,13 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
       xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true);
       arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(arma::symmatu( Kxx ), "lower")));
-      
+      /*
       double nanxi = arma::accu(Kxxi_c);
       if(isnan(nanxi)){
         Rcpp::Rcout << data.sigmasq << endl;
         Rcpp::Rcout << "Error in inv tri chol sym(Kxx) at " << u << endl;
         data.track_chol_fails(u) = 1;
-      }
+      }*/
       // +++++++++++++++++
       
       xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat);
@@ -1126,14 +1182,14 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
     }
   }
   
-  if(arma::all(data.track_chol_fails == 0)){
-    data.cholfail = false;
+  //if(arma::all(data.track_chol_fails == 0)){
+  //  data.cholfail = false;
     
   #pragma omp parallel for // **
-    for(int i=0; i<n_blocks; i++){
-      int u = block_names(i)-1;
-      
-      if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+    for(int i = 0; i<n_ref_blocks; i++){
+      int r = reference_blocks(i);
+      int u = block_names(r)-1;
+      //if(compute_block(predicting, block_ct_obs(u), false)){
         int u_cached_ix = coords_caching_ix(u);
         arma::uvec cx = arma::find( coords_caching == u_cached_ix );
         arma::mat Kcc = K_coords_cache(cx(0));
@@ -1184,15 +1240,15 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
           data.loglik_w_comps(u) = 0;
           //Rcpp::Rcout << "i: " << i << ", u: " << u << " ldCi " << logdetCi_comps(u) << endl;
         }
-      } else {
+      /*} else {
         data.logdetCi_comps(u) = 0;
         data.wcore(u) = 0;
         data.loglik_w_comps(u) = 0;
-      }
+      }*/
     }
     data.logdetCi = arma::accu(data.logdetCi_comps);
     data.loglik_w = data.logdetCi + arma::accu(data.loglik_w_comps);
-    
+    /*
   } else {
     data.cholfail = true;
     Rcpp::Rcout << "Failure: " << endl;
@@ -1210,7 +1266,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
     
     Rcpp::Rcout << cparams.t() << endl << Dmat << endl;
     throw 1;
-  }
+  }*/
   
   if(verbose){
     end = std::chrono::steady_clock::now();
@@ -1228,10 +1284,11 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
   theta_transform(data);
 
 #pragma omp parallel for // **
-  for(int i=0; i<n_blocks; i++){
-    int u = block_names(i)-1;
-    
-    if(compute_block(predicting, block_ct_obs(u), rfc_dep) ){
+  for(int i = 0; i<n_ref_blocks; i++){
+    int r = reference_blocks(i);
+    int u = block_names(r)-1;
+    //if(compute_block(predicting, block_ct_obs(u), false) ){
+    if(block_ct_obs(u) > 0){
       // skip calculating stuff for blocks in the predict-only area 
       // when it's not prediction time
       arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), cparams, Dmat, true);
@@ -1269,9 +1326,7 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
           * hl2pi -.5 * data.wcore(u);
       }
     } else {
-      data.wcore(u) = 0;
-      data.loglik_w_comps(u) = 0;
-      data.logdetCi_comps(u) = 0;
+      Rcpp::Rcout << "should not read this 2 " << endl;
     }
   }
   
@@ -1408,7 +1463,7 @@ void MeshGPsvc::gibbs_sample_w_omp(){
     int u = gibbs_caching(i);
     //Rcpp::Rcout << "gibbs_sample_w_omp caching step - block " << u << "\n";
     
-    if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+    if(block_ct_obs(u) > 0){
       arma::mat Sigi_tot = param_data.w_cond_prec(u); // Sigi_p
       
       for(int c=0; c<children(u).n_elem; c++){
@@ -1425,13 +1480,13 @@ void MeshGPsvc::gibbs_sample_w_omp(){
   
   start_overall = std::chrono::steady_clock::now();
   
-  for(int g=0; g<n_gibbs_groups; g++){
+  for(int g=0; g<n_gibbs_groups-1; g++){
 #pragma omp parallel for
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
       arma::mat Sigi_chol, Sigi_tot;
-      if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+      //if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
         arma::mat Smu_c, Smu_tot, Smu_y; //Sigi_p, 
         
         //Rcpp::Rcout << "gibbs_sample_w_omp loop step 1 - block " << u << "\n";
@@ -1481,7 +1536,7 @@ void MeshGPsvc::gibbs_sample_w_omp(){
         
         w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
         
-      } 
+      //} 
     }
   }
   
@@ -1515,14 +1570,14 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
   
   //arma::uvec gibbs_groups_reorder = ashuffle(arma::regspace<arma::uvec>(0, n_gibbs_groups-1));
   
-  for(int g=0; g<n_gibbs_groups; g++){
+  for(int g=0; g<n_gibbs_groups-1; g++){
     //int g = gibbs_groups_reorder(go);
     #pragma omp parallel for
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
-      if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
-        if(block_ct_obs(u) > 0){
+      //if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+        //if(block_ct_obs(u) > 0){
           arma::mat Smu_c, Smu_tot, Smu_y, //Sigi_p, 
           Sigi_chol, Sigi_tot;
           arma::sp_mat Sigi_y;
@@ -1574,22 +1629,11 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
           arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec); //************************
           
           w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
-        } else {
-          // only predictions at this block. 
-          // sample from conditional MVN 
-          arma::vec w_par = arma::vectorise(arma::trans(w.rows(parents_indexing(u))));
-          
-          arma::vec phimean = param_data.w_cond_mean_K(u) * w_par;
-          
-          arma::mat cholK = arma::inv(arma::trimatu( arma::flipud(arma::fliplr(param_data.w_cond_cholprec(u)) )));
-                       
-          arma::vec normvec = arma::randn(q*indexing(u).n_elem);
-          arma::vec w_temp = phimean + cholK * normvec;
-          //arma::vec w_temp = phimean;//************************
-          w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
-        }
+        //} else {
+        //  
+        //}
         
-      } 
+      //} 
     }
   }
   
@@ -1608,6 +1652,37 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
                 << "us. " << "\n";
   }
   
+}
+
+void MeshGPsvc::predict(bool needs_update=true){
+#pragma omp parallel for
+  for(int i=0; i<u_predicts.n_elem; i++){
+    int u = u_predicts(i);
+    
+    // only predictions at this block. 
+    // sample from conditional MVN 
+    if(needs_update){
+      arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), cparams, Dmat, true);
+      arma::mat Kxxi = arma::inv_sympd( xCovHUV(coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true) );
+      arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), cparams, Dmat, false);
+      
+      //Rcpp::Rcout << "? 1 " << endl;
+      param_data.w_cond_mean_K(u) = Kcx * Kxxi;
+      param_data.w_cond_cholprec(u) = arma::flipud(arma::fliplr(arma::chol( arma::symmatu(Kcc - param_data.w_cond_mean_K(u) * Kcx.t()) , "lower")));
+    }
+    
+    arma::vec w_par = arma::vectorise(arma::trans(w.rows(parents_indexing(u))));
+    
+    arma::vec phimean = param_data.w_cond_mean_K(u) * w_par;
+    
+    arma::mat cholK = param_data.w_cond_cholprec(u);
+    
+    arma::vec normvec = arma::randn(q*indexing(u).n_elem);
+    arma::vec w_temp = phimean + cholK * normvec;
+    //arma::vec w_temp = phimean;//************************
+    w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
+    
+  }
 }
 
 void MeshGPsvc::theta_update(MeshData& data, const arma::vec& new_param){
