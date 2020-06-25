@@ -19,7 +19,7 @@ inline bool do_I_accept(double logaccept){ //, string name_accept, string name_c
     }
   }
   Rcpp::RNGScope scope;
-  double u = arma::randu();
+  double u = R::runif(0,1);//arma::randu();
   if(u < acceptj){
     return true;
   } else {
@@ -59,6 +59,111 @@ inline void adapt(const arma::vec& param,
   }
 }
 
+
+class MHAdapter {
+public:
+  int npars;
+  
+  double EPS;
+  double tau_accept;
+  double g_exp;
+  int g0;
+  double rho_max;
+  double rho_min;
+  
+  double propos_count = 0;
+  double accept_count = 0;
+  double accept_ratio = 0;
+  double propos_count_local = 0;
+  double accept_count_local = 0;
+  double accept_ratio_local = 0;
+  
+  arma::vec sumparam;
+  arma::mat prodparam;
+  arma::mat paramsd;
+  arma::vec sd_param;
+  
+  void count_proposal();
+  void count_accepted();
+  void update_ratios();
+  void adapt(const arma::vec&, int);
+  void print(int itertime, int mc);
+  void print_summary(int time_tick, int time_mcmc, int m, int mcmc);
+  
+  MHAdapter(){};
+  MHAdapter(int npars, int mcmc, const arma::mat& metropolis_sd);
+};
+
+inline MHAdapter::MHAdapter(int npars, int mcmc, const arma::mat& metropolis_sd){
+  
+  EPS = 0.1;
+  tau_accept = 0.234;
+  g_exp = .01;
+  g0 = 500;
+  rho_max = 2;
+  rho_min = 5;
+  
+  propos_count = 0;
+  accept_count = 0;
+  accept_ratio = 0;
+  propos_count_local = 0;
+  accept_count_local = 0;
+  accept_ratio_local = 0;
+  
+  sumparam = arma::zeros(npars); // include sigmasq
+  prodparam = arma::zeros(npars,npars);
+  paramsd = metropolis_sd; // proposal sd
+  sd_param = arma::zeros(mcmc +1); // mcmc sd
+}
+
+inline void MHAdapter::count_proposal(){
+  propos_count++;
+  propos_count_local++;
+}
+
+inline void MHAdapter::count_accepted(){
+  accept_count++;
+  accept_count_local++;
+}
+
+inline void MHAdapter::update_ratios(){
+  accept_ratio = accept_count/propos_count;
+  accept_ratio_local = accept_count_local/propos_count_local;
+}
+
+inline void MHAdapter::adapt(const arma::vec& param, int mc){
+  sumparam += param;
+  prodparam += param * param.t();
+  
+  sd_param(mc+1) = sd_param(mc) + pow(mc+1.0, -g_exp) * (accept_ratio - tau_accept);
+  //clog << sd_param.col(j).row(mc) << endl;
+  if(sd_param(mc+1) > exp(rho_max)){
+    sd_param(mc+1) = exp(rho_max);
+  } else {
+    if(sd_param(mc+1) < exp(-rho_min)){
+      sd_param(mc+1) = exp(-rho_min);
+    }
+  }
+  
+  if(mc > g0){
+    paramsd = sd_param(mc+1) / (mc+1.0) * 
+      ( prodparam - (sumparam*sumparam.t())/(mc+0.0) ) +
+      sd_param(mc+1) * EPS;
+    
+  }
+}
+
+inline void MHAdapter::print(int itertime, int mc){
+  printf("%5d-th iteration [ %dms ] ~ MCMC acceptance %.2f%% (total: %.2f%%)\n", 
+         mc+1, itertime, accept_ratio_local*100, accept_ratio*100);
+}
+inline void MHAdapter::print_summary(int time_tick, int time_mcmc, int m, int mcmc){
+  printf("%.1f%% %dms (total: %dms) ~ MCMC acceptance %.2f%% (total: %.2f%%) \n",
+         floor(100.0*(m+0.0)/mcmc),
+         time_tick,
+         time_mcmc,
+         accept_ratio_local*100, accept_ratio*100);
+}
 inline double logistic(double x, double l=1){
   return l/(1.0+exp(-x));
 }

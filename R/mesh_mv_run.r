@@ -8,7 +8,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                                       beta=NULL,
                                       tausq=NULL),
                    starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL),
-                   debug       = list(sample_beta=T, sample_tausq=T, sample_theta=T, sample_w=T)
+                   debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
                    ){
 
   
@@ -60,7 +60,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     
     sample_beta    <- debug$sample_beta
     sample_tausq   <- debug$sample_tausq
-    
+    sample_sigmasq <- debug$sample_sigmasq
     sample_theta   <- debug$sample_theta
     sample_w       <- debug$sample_w
     
@@ -92,10 +92,11 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     toplim <- 1e5
     btmlim <- 1e-5
     
+    
     if(dd == 2){
       if(q > 1){
         n_cbase <- ifelse(q > 2, 3, 1)
-        npars <- 3*q + n_cbase
+        npars <- 3*q + n_cbase - 1 + 1 ##//
         
         start_theta <- rep(2, npars) %>% c(rep(1, k))
         
@@ -119,7 +120,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
         set_unif_bounds <- rbind(set_unif_bounds, vbounds)
       
       } else {
-        npars <- 2
+        npars <- 1 + 1
         start_theta <- rep(10, npars)
         
         set_unif_bounds <- matrix(0, nrow=npars, ncol=2)
@@ -127,6 +128,10 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
         set_unif_bounds[,2] <- toplim
       }
       
+    }
+    
+    if(!is.null(starting$theta)){
+      start_theta <- starting$theta
     }
     
     
@@ -255,16 +260,16 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
   #load("debug.RData")
   
   # DAG
-  parents_children <- mesh_graph_build_mv(coords_blocking %>% dplyr::select(-ix), Mv, F)
+  suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-ix), Mv, F))
   parents                      <- parents_children[["parents"]] 
   children                     <- parents_children[["children"]] 
   block_names                  <- parents_children[["names"]] 
-  block_groups                 <- parents_children[["groups"]][order(block_names)]
+  block_groups                 <- parents_children[["groups"]]#[order(block_names)]
   indexing                     <- (1:nr_full-1) %>% split(blocking)
   
   simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata)
   
-  start_w <- rep(0, nr_full)
+  #start_w <- rep(0, nr_full)
   
   # finally prepare data
   sort_ix     <- simdata$ix
@@ -292,6 +297,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                               tausq_ab,
                               
                               start_w, 
+                              start_sigmasq,
                               start_theta,
                               start_beta,
                               start_tausq,
@@ -310,19 +316,18 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                               mcmc_printall, # print all iter
                               # sampling of:
                               # beta tausq sigmasq theta w
-                              sample_beta, sample_tausq, sample_theta, sample_w) 
+                              sample_beta, sample_tausq, 
+                              sample_sigmasq,
+                              sample_theta, sample_w) 
     })
   
     list2env(results, environment())
     return(list(coords    = coords,
-                cdata = simdata %>% dplyr::select(contains("Var"), ix, mv_id),
-                cdata2 = coords_blocking, 
-                parents=parents,
-                children=children,
-                pix=pix,
+                indexing = indexing,
+                block_ct_obs = bco,
                 beta_mcmc    = beta_mcmc,
                 tausq_mcmc   = tausq_mcmc,
-                
+                sigmasq_mcmc = sigmasq_mcmc,
                 theta_mcmc   = theta_mcmc,
                 
                 w_mcmc    = w_mcmc,
@@ -331,7 +336,8 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                 runtime_all   = comp_time,
                 runtime_mcmc  = mcmc_time,
                 sort_ix      = sort_ix,
-                paramsd   = paramsd
+                paramsd   = paramsd,
+                debug = debug
                 ))
     
 }

@@ -43,7 +43,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       saving         <- settings$saving
     }
     
-    rfc_dependence <- settings$reference_full_coverage
+    #rfc_dependence <- settings$reference_full_coverage
     
     sample_beta    <- debug$sample_beta
     sample_tausq   <- debug$sample_tausq
@@ -130,7 +130,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
         # spacetime
         if(q > 2){
           # multivariate
-          set_unif_bounds <- matrix(rbind(c(btmlim, toplim), # sigmasq
+          set_unif_bounds <- matrix(rbind(#c(btmlim, toplim), # sigmasq
                                           c(btmlim, toplim), # alpha_1
                                           c(btmlim, 1-btmlim), # beta_1
                                           c(btmlim, toplim), # alpha_2
@@ -139,7 +139,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                                     ncol=2)
         } else {
           # bivariate or univariate
-          set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+          set_unif_bounds <- matrix(rbind(#c(btmlim, toplim),
                                           c(btmlim, toplim),
                                           c(btmlim, 1-btmlim),
                                           c(btmlim, toplim)), ncol=2)
@@ -148,14 +148,14 @@ meshgp <- function(y, X, Z, coords, axis_partition,
         # space
         if(q > 2){
           # multivariate
-          set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+          set_unif_bounds <- matrix(rbind(#c(btmlim, toplim),
                                           c(btmlim, toplim),
                                           c(btmlim, 1-btmlim),
                                           c(btmlim, toplim)), ncol=2)
           
         } else {
           # bivariate or univariate
-          set_unif_bounds <- matrix(rbind(c(btmlim, toplim),
+          set_unif_bounds <- matrix(rbind(#c(btmlim, toplim),
                                           c(btmlim, toplim)), ncol=2)
         }
       }
@@ -197,7 +197,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     
     
     if(length(settings$mcmcsd) == 1){
-      mcmc_mh_sd <- diag(length(start_theta) + 1) * settings$mcmcsd
+      mcmc_mh_sd <- diag(length(start_theta)# + 1
+                         ) * settings$mcmcsd
     } else {
       mcmc_mh_sd <- settings$mcmcsd
     }
@@ -292,14 +293,14 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       nr_full <- nr
     }
     
-    if(!rfc_dependence){
+    #if(!rfc_dependence){
       emptyblocks <- coords_blocking %>% 
         group_by(block) %>% 
         summarize(avail = mean(!is.na(na_which))) %>%
         dplyr::filter(avail==0)
       newcol <- coords_blocking$color %>% max() %>% add(1)
       coords_blocking %<>% mutate(color = ifelse(block %in% emptyblocks$block, newcol, color))
-    }
+    #}
     c_unique <- coords_blocking %>% dplyr::select(block, color) %>% unique()
     ggroup <- c_unique %$% block
     gcolor <- c_unique %$% color
@@ -307,18 +308,16 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     blocking <- coords_blocking$block %>% factor() %>% as.integer()
     
     # DAG
-    system.time(parents_children <- mesh_graph_build(coords_blocking, Mv, na_which, rfc_dependence))
+    suppressMessages(parents_children <- mesh_graph_build(coords_blocking, Mv, F))
     parents                      <- parents_children[["parents"]] 
     children                     <- parents_children[["children"]] 
     block_names                  <- parents_children[["names"]] 
-    block_groups                 <- parents_children[["groups"]][order(block_names)]
+    block_groups                 <- parents_children[["groups"]]#[block_names]
     indexing                     <- (1:nr_full-1) %>% split(blocking)
-    
-    
-    
+
     simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata)
     
-    start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
+    #start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
     
     # finally prepare data
     sort_ix     <- simdata$ix
@@ -377,7 +376,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                               mcmc_adaptive, # adapting
                               mcmc_cache, # use cache
                               mcmc_cache_gibbs,
-                              rfc_dependence, # use all coords as reference even at empty blocks
+                              F, # use all coords as reference even at empty blocks
                               mcmc_verbose, mcmc_debug, # verbose, debug
                               mcmc_printall, # print all iter
                               saving,
@@ -388,11 +387,20 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     
     list2env(results, environment())
     return(list(coords    = coords,
+                indexing = indexing,
+                coords_block = coords_blocking,
+                block_groups= block_groups,
+                parents = parents,
+                children = children,
+                block_names = block_names,
+                block_groups = block_groups,
                 
                 beta_mcmc    = beta_mcmc,
                 tausq_mcmc   = tausq_mcmc,
-                
+                sigmasq_mcmc = sigmasq_mcmc,
                 theta_mcmc   = theta_mcmc,
+                
+                ll = ll,
                 
                 w_mcmc    = w_mcmc,
                 yhat_mcmc = yhat_mcmc,
@@ -401,7 +409,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                 runtime_mcmc  = mcmc_time,
                 sort_ix      = sort_ix,
                 paramsd   = paramsd,
-                recover   = recover
+                recover   = recover,
+                debug = debug
                 ))
     
 }

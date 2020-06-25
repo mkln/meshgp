@@ -102,6 +102,33 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// blanket
+arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::uvec& names, const arma::uvec& block_ct_obs);
+RcppExport SEXP _meshgp_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type children(childrenSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type names(namesSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type block_ct_obs(block_ct_obsSEXP);
+    rcpp_result_gen = Rcpp::wrap(blanket(parents, children, names, block_ct_obs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// coloring
+arma::ivec coloring(const arma::field<arma::uvec>& blanket, const arma::uvec& block_names, const arma::uvec& block_ct_obs);
+RcppExport SEXP _meshgp_coloring(SEXP blanketSEXP, SEXP block_namesSEXP, SEXP block_ct_obsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type blanket(blanketSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type block_names(block_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type block_ct_obs(block_ct_obsSEXP);
+    rcpp_result_gen = Rcpp::wrap(coloring(blanket, block_names, block_ct_obs));
+    return rcpp_result_gen;
+END_RCPP
+}
 // mesh_gibbs_groups
 arma::mat mesh_gibbs_groups(const arma::mat& layers_descr, const arma::uvec& Mv, bool rfc);
 RcppExport SEXP _meshgp_mesh_gibbs_groups(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP rfcSEXP) {
@@ -235,8 +262,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // qmeshgp_mv_mcmc
-Rcpp::List qmeshgp_mv_mcmc(const arma::vec& y, const arma::mat& X, const arma::mat& coords, const arma::uvec& mv_id, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& tausq_ab, const arma::vec& start_w, const arma::vec& theta, const arma::vec& beta, const double& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int num_threads, bool adapting, bool cache, bool cache_gibbs, bool verbose, bool debug, bool printall, bool sample_beta, bool sample_tausq, bool sample_theta, bool sample_w);
-RcppExport SEXP _meshgp_qmeshgp_mv_mcmc(SEXP ySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP mv_idSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP tausq_abSEXP, SEXP start_wSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP cacheSEXP, SEXP cache_gibbsSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP printallSEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
+Rcpp::List qmeshgp_mv_mcmc(const arma::vec& y, const arma::mat& X, const arma::mat& coords, const arma::uvec& mv_id, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& tausq_ab, const arma::vec& start_w, const double& sigmasq, const arma::vec& theta, const arma::vec& beta, const double& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int num_threads, bool adapting, bool cache, bool cache_gibbs, bool verbose, bool debug, bool printall, bool sample_beta, bool sample_tausq, bool sample_sigmasq, bool sample_theta, bool sample_w);
+RcppExport SEXP _meshgp_qmeshgp_mv_mcmc(SEXP ySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP mv_idSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP tausq_abSEXP, SEXP start_wSEXP, SEXP sigmasqSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP cacheSEXP, SEXP cache_gibbsSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP printallSEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_sigmasqSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -254,6 +281,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type beta_Vi(beta_ViSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type tausq_ab(tausq_abSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type start_w(start_wSEXP);
+    Rcpp::traits::input_parameter< const double& >::type sigmasq(sigmasqSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< const double& >::type tausq(tausqSEXP);
@@ -270,9 +298,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type printall(printallSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_beta(sample_betaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_tausq(sample_tausqSEXP);
+    Rcpp::traits::input_parameter< bool >::type sample_sigmasq(sample_sigmasqSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_theta(sample_thetaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_w(sample_wSEXP);
-    rcpp_result_gen = Rcpp::wrap(qmeshgp_mv_mcmc(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_theta, sample_w));
+    rcpp_result_gen = Rcpp::wrap(qmeshgp_mv_mcmc(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -333,6 +362,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_hex_to_dec_vec", (DL_FUNC) &_meshgp_hex_to_dec_vec, 1},
     {"_meshgp_list_mean", (DL_FUNC) &_meshgp_list_mean, 1},
     {"_meshgp_list_qtile", (DL_FUNC) &_meshgp_list_qtile, 2},
+    {"_meshgp_blanket", (DL_FUNC) &_meshgp_blanket, 4},
+    {"_meshgp_coloring", (DL_FUNC) &_meshgp_coloring, 3},
     {"_meshgp_mesh_gibbs_groups", (DL_FUNC) &_meshgp_mesh_gibbs_groups, 3},
     {"_meshgp_kthresholdscp", (DL_FUNC) &_meshgp_kthresholdscp, 2},
     {"_meshgp_part_axis_parallel", (DL_FUNC) &_meshgp_part_axis_parallel, 4},
@@ -342,7 +373,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_eigenchol", (DL_FUNC) &_meshgp_eigenchol, 1},
     {"_meshgp_qmgp_Cinv", (DL_FUNC) &_meshgp_qmgp_Cinv, 11},
     {"_meshgp_qmgp_sampler", (DL_FUNC) &_meshgp_qmgp_sampler, 11},
-    {"_meshgp_qmeshgp_mv_mcmc", (DL_FUNC) &_meshgp_qmeshgp_mv_mcmc, 32},
+    {"_meshgp_qmeshgp_mv_mcmc", (DL_FUNC) &_meshgp_qmeshgp_mv_mcmc, 34},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 38},
     {NULL, NULL, 0}
 };

@@ -29,6 +29,14 @@ list_qtile <- function(x, q) {
     .Call(`_meshgp_list_qtile`, x, q)
 }
 
+blanket <- function(parents, children, names, block_ct_obs) {
+    .Call(`_meshgp_blanket`, parents, children, names, block_ct_obs)
+}
+
+coloring <- function(blanket, block_names, block_ct_obs) {
+    .Call(`_meshgp_coloring`, blanket, block_names, block_ct_obs)
+}
+
 mesh_gibbs_groups <- function(layers_descr, Mv, rfc) {
     .Call(`_meshgp_mesh_gibbs_groups`, layers_descr, Mv, rfc)
 }
@@ -65,8 +73,8 @@ qmgp_sampler <- function(coords, blocking, parents, block_names, indexing, theta
     .Call(`_meshgp_qmgp_sampler`, coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads, cache, verbose, debug)
 }
 
-qmeshgp_mv_mcmc <- function(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
-    .Call(`_meshgp_qmeshgp_mv_mcmc`, y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_theta, sample_w)
+qmeshgp_mv_mcmc <- function(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
+    .Call(`_meshgp_qmeshgp_mv_mcmc`, y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
 }
 
 qmeshgp_svc_mcmc <- function(y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, saving = TRUE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {

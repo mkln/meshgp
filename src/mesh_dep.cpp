@@ -22,6 +22,95 @@ arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na=-1, int pred
   return x;
 }
 
+//[[Rcpp::export]]
+arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, 
+                                const arma::field<arma::uvec>& children,
+                                const arma::uvec& names,
+                                const arma::uvec& block_ct_obs){
+  arma::uvec oneuv = arma::ones<arma::uvec>(1);
+  int n_blocks = names.n_elem;
+  arma::field<arma::uvec> mb(n_blocks);
+  
+  for(int i=0; i<n_blocks; i++){
+    int u = names(i) - 1;
+    if(block_ct_obs(u) > 0){
+      // block cannot be the same color as other nodes in blanket
+      arma::uvec u_blanket = arma::zeros<arma::uvec>(0);
+      for(int p=0; p<parents(u).n_elem; p++){
+        int px = parents(u)(p);
+        u_blanket = arma::join_vert(u_blanket, px*oneuv);
+      }
+      for(int c=0; c<children(u).n_elem; c++){
+        int cx = children(u)(c);
+        u_blanket = arma::join_vert(u_blanket, cx*oneuv);
+        
+        for(int pc=0; pc<parents(cx).n_elem; pc++){
+          int pcx = parents(cx)(pc);
+          if(pcx != u){
+            u_blanket = arma::join_vert(u_blanket, pcx*oneuv);
+          }
+        }
+      }
+      mb(u) = u_blanket;
+    }
+  }
+  return mb;
+}
+
+arma::ivec std_setdiff(arma::ivec& x, arma::ivec& y) {
+  std::vector<int> a = arma::conv_to< std::vector<int> >::from(arma::sort(x));
+  std::vector<int> b = arma::conv_to< std::vector<int> >::from(arma::sort(y));
+  std::vector<int> out;
+  std::set_difference(a.begin(), a.end(), b.begin(), b.end(),
+                      std::inserter(out, out.end()));
+  return arma::conv_to<arma::ivec>::from(out);
+}
+
+//[[Rcpp::export]]
+arma::ivec coloring(const arma::field<arma::uvec>& blanket, const arma::uvec& block_names, const arma::uvec& block_ct_obs){
+  int n_blocks = blanket.n_elem;
+  arma::ivec oneiv = arma::ones<arma::ivec>(1);
+  arma::ivec color_picker = arma::zeros<arma::ivec>(1);
+  arma::ivec colors = arma::zeros<arma::ivec>(n_blocks) - 1;
+  
+  int u = block_names(0) - 1;
+  colors(u) = 0;
+  
+  for(int i=1; i<n_blocks; i++){
+    u = block_names(i) - 1;
+    if(block_ct_obs(u) > 0){
+      
+      arma::ivec neighbor_colors = colors(blanket(u));
+      
+      arma::ivec neighbor_colors_used = neighbor_colors(arma::find(neighbor_colors > -1));
+      
+      arma::ivec colors_available = std_setdiff(color_picker, neighbor_colors_used);
+      
+      int choice_color = -1;
+      if(colors_available.n_elem > 0){
+        choice_color = arma::min(colors_available);
+      } else {
+        choice_color = arma::max(color_picker) + 1;
+        color_picker = arma::join_vert(color_picker, oneiv * choice_color);
+      }
+      
+      if(false){
+        Rcpp::Rcout << "-- -- -- -- "<< endl;
+        Rcpp::Rcout << "u: " << u << endl;
+        Rcpp::Rcout << "neighbors: " << blanket(u).t() << endl;
+        Rcpp::Rcout << "colors of neighbors of u: " << neighbor_colors << endl;
+        Rcpp::Rcout << "colors of neighbors of u (used): " << neighbor_colors_used << endl;
+        Rcpp::Rcout << "colors available: " << colors_available << endl;
+        Rcpp::Rcout << "color assigned to " << u << ": " << choice_color << endl;
+      }
+      
+      colors(u) = choice_color;
+    }
+    
+  }
+  return colors;
+}
+
 
 //[[Rcpp::export]]
 arma::mat mesh_gibbs_groups(const arma::mat& layers_descr, 
