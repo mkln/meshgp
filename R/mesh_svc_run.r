@@ -123,7 +123,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     }
     
     toplim <- 1e5
-    btmlim <- 1e-5
+    btmlim <- 1e-2
     
     if(is.null(prior$set_unif_bounds)){
       if(dd == 3){
@@ -169,8 +169,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
         } else {
           dlim <- 1e5
         }
-        vbounds[,1] <- 1e-5;
-        vbounds[,2] <- dlim - 1e-5
+        vbounds[,1] <- btmlim;
+        vbounds[,2] <- dlim - btmlim
         set_unif_bounds <- rbind(set_unif_bounds, vbounds)
       }
     } else {
@@ -197,8 +197,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     
     
     if(length(settings$mcmcsd) == 1){
-      mcmc_mh_sd <- diag(length(start_theta)# + 1
-                         ) * settings$mcmcsd
+      mcmc_mh_sd <- diag(length(start_theta)) * settings$mcmcsd
     } else {
       mcmc_mh_sd <- settings$mcmcsd
     }
@@ -387,30 +386,20 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     
     list2env(results, environment())
     return(list(coords    = coords,
-                indexing = indexing,
-                coords_block = coords_blocking,
-                block_groups= block_groups,
-                parents = parents,
-                children = children,
-                block_names = block_names,
-                block_groups = block_groups,
+                sort_ix      = sort_ix,
                 
                 beta_mcmc    = beta_mcmc,
                 tausq_mcmc   = tausq_mcmc,
                 sigmasq_mcmc = sigmasq_mcmc,
                 theta_mcmc   = theta_mcmc,
                 
-                ll = ll,
-                
                 w_mcmc    = w_mcmc,
                 yhat_mcmc = yhat_mcmc,
       
                 runtime_all   = comp_time,
                 runtime_mcmc  = mcmc_time,
-                sort_ix      = sort_ix,
-                paramsd   = paramsd,
-                recover   = recover,
-                debug = debug
+                
+                recover   = recover
                 ))
     
 }

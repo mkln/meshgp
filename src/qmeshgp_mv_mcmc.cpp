@@ -297,20 +297,12 @@ Rcpp::List qmeshgp_mv_mcmc(
             throw 1;
           }
           
-          double sigmasq_mhr=0;
-          if(param.n_elem == 2){
-            sigmasq_mhr = 
-              invgamma_logdens(new_param(0), 2.01, 1) -
-              invgamma_logdens(param(0), 2.01, 1);
-          }
-          sigmasq_mhr=0;
-          
-          //prior_logratio = calc_prior_logratio(k, new_param, param, npars, dlim);
+          prior_logratio = calc_prior_logratio(new_param, param);
           jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + //prior_logratio + 
-            sigmasq_mhr +
+            prior_logratio +
             jacobian;
-          
+          /*
           if(m == mcmc-1){
             Rcpp::Rcout << "param: " << param.t() << endl;
             Rcpp::Rcout << "new param: " << new_param.t() << endl;
@@ -318,7 +310,7 @@ Rcpp::List qmeshgp_mv_mcmc(
             Rcpp::Rcout << new_loglik << " vs " << current_loglik << endl;
             Rcpp::Rcout << "jacobian: " << jacobian << endl;
             Rcpp::Rcout << "prior: " << sigmasq_mhr << endl;
-          }
+          }*/
           if(isnan(logaccept)){
             Rcpp::Rcout << new_param.t() << endl;
             Rcpp::Rcout << param.t() << endl;
