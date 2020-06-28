@@ -343,7 +343,7 @@ MeshGPmv::MeshGPmv(
       npars = 1+1; //##
     } else {
       int n_cbase = q > 2? 3: 1;
-      npars = 3*q + n_cbase - 1+1;
+      npars = 3*q + n_cbase; // ## 
     }
   } else {
     Rcpp::Rcout << "d>2 not implemented for multivariate outcomes, yet " << endl;
@@ -582,12 +582,11 @@ void MeshGPmv::init_cache(){
   
   arma::field<arma::mat> kr_pairing(n_blocks);
 #pragma omp parallel for
-  for(int i = 0; i<n_ref_blocks; i++){
+  for(int i = 0; i<n_blocks; i++){
     //int r = reference_blocks(i);
-    //int u = block_names(r)-1;
-    int u = ref_block_names(i);
-    
-
+    int u = block_names(i)-1;
+    //int u = ref_block_names(i);
+  
     if(parents_indexing(u).n_elem > 0){//parents_coords(u).n_rows > 0){
       arma::mat cmat = coords.rows(indexing(u));
       arma::mat pmat = coords.rows(parents_indexing(u));
@@ -597,8 +596,8 @@ void MeshGPmv::init_cache(){
     }
   }
   
-  //kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
-  kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
+  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  //kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
 
   kr_caching = arma::unique(kr_caching_ix);
   
@@ -900,6 +899,7 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
       mvCovAG20107_inplace(K_coords_cache(i), coords, qvblock_c, indexing(u), indexing(u), ai1, ai2, phi_i, thetamv, Dmat, true);
     }
   }
+  
   //end = std::chrono::steady_clock::now();
   //timings(0) = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
@@ -934,11 +934,9 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
       
       //start = std::chrono::steady_clock::now();
       arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(Kxx, "lower")));
+      
       //end = std::chrono::steady_clock::now();
       //timings(4) += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-      
-      
-      
       
       /*double nanxi = arma::accu(Kxxi_c);
       if(isnan(nanxi)){
@@ -964,9 +962,21 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
       //start = std::chrono::steady_clock::now();
       //try {
       arma::mat Kinside = Kcc - Kcx_Kxxic*Kcx_Kxxic.t();
-      K_cholcp_cache(i) = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
-        Kinside
-      ) , "lower")));
+      try {
+        K_cholcp_cache(i) = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
+          Kinside
+        ) , "lower")));
+      } catch (...) {
+        Rcpp::Rcout << Kinside << endl;
+        Rcpp::Rcout << coords.rows(indexing(u)) << endl;
+        Rcpp::Rcout << coords.rows(parents_indexing(u)) << endl;
+        Rcpp::Rcout << qvblock_c.rows(indexing(u)) << endl;
+        Rcpp::Rcout << qvblock_c.rows(parents_indexing(u)) << endl;
+        Rcpp::Rcout << ai1 << " " << ai2 << " " << phi_i << " " << thetamv << " " << Dmat << endl;
+        Rcpp::Rcout << "Kinside error. " << endl; 
+        throw 1;
+      }
+      
       //end = std::chrono::steady_clock::now();
       //timings(7) += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
       

@@ -5,7 +5,7 @@ using namespace std;
 
 
 // exponential covariance
-arma::mat cexpcov(const arma::mat& x, const arma::mat& y, double sigmasq, double phi, bool same){
+arma::mat cexpcov(const arma::mat& x, const arma::mat& y, const double& sigmasq, const double& phi, bool same){
   // 0 based indexing
   if(same){
     arma::mat pmag = arma::sum(x % x, 1);
@@ -22,7 +22,7 @@ arma::mat cexpcov(const arma::mat& x, const arma::mat& y, double sigmasq, double
   }
 }
 
-double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q, int dim){
+double xCovHUV_base(const double& h, const double& u, const double& v, const arma::vec& params, const int& q, const int& dim){
   //Rcpp::Rcout << "h: " << h << " u: " << u << " v: " << v << " | q: " << q << " dim: " << dim << endl;
   // Gneiting 2002 uses phi and psi as above ( beta here is kappa in covariance_functions.cpp )
   // hsq = ||h||^2, u = |u|^2 are squared norms. v = d_ij is "distance" between var. i and var. j
@@ -50,8 +50,8 @@ double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q
         // multivariate but fixing a_psi2=1, beta_psi2=1 ?
         // sigmasq + 3 params + v
         double sigmasq   = params(0);
-        double a_psi2    = 1.0;
-        double beta_psi2 = 1.0;
+        //double a_psi2    = 1.0;
+        //double beta_psi2 = 1.0;
         double a_psi1    = params(1);
         double beta_psi1 = params(2);
         double c_phi1    = params(3);
@@ -143,8 +143,9 @@ void xCovHUV_inplace(arma::mat& res,
   } else {
     if(same){
       for(int i=0; i<ind1.n_elem; i++){
+        arma::rowvec cri = coords.row(ind1(i));
         for(int j=i; j<ind2.n_elem; j++){
-          arma::rowvec delta = coords.row(ind1(i)) - coords.row(ind2(j));
+          arma::rowvec delta = cri - coords.row(ind2(j));
           double h = arma::norm(delta.subvec(0, 1));
           double u = d > 2? abs(delta(2)) : 0;
           if(p > 1){
@@ -166,8 +167,9 @@ void xCovHUV_inplace(arma::mat& res,
     } else {
       //int cc = 0;
       for(int i=0; i<ind1.n_elem; i++){
+        arma::rowvec cri = coords.row(ind1(i));
         for(int j=0; j<ind2.n_elem; j++){
-          arma::rowvec delta = coords.row(ind1(i)) - coords.row(ind2(j));
+          arma::rowvec delta = cri - coords.row(ind2(j));
           double h = arma::norm(delta.subvec(0, 1));
           double u = d > 2? abs(delta(2)) : 0;
           if(p > 1){

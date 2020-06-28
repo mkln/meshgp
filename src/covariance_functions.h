@@ -23,11 +23,11 @@ inline arma::mat vec_to_symmat(const arma::vec& x){
 // phi(x) : exp(-c x^\gamma)
 // psi(x) : (a x^\alpha + 1)^\beta
 
-inline double fphi(double x, double c){
+inline double fphi(const double& x, const double& c){
   return exp(-c * x);
 }
 
-inline double sqrt_fpsi(double x, double a, const double beta){
+inline double sqrt_fpsi(const double& x, const double& a, const double& beta){
   // square root of psi function
   // used in conjunction with setting alpha=0.5 and gamma=0.5 in covariances
   return exp(0.5*beta * log1p(a*x));// pow(a * x + 1, 0.5*beta);
@@ -35,14 +35,14 @@ inline double sqrt_fpsi(double x, double a, const double beta){
 
 
 // exponential covariance
-arma::mat cexpcov(const arma::mat& x, const arma::mat& y, double sigmasq, double phi, bool same=false);
+arma::mat cexpcov(const arma::mat& x, const arma::mat& y, const double& sigmasq, const double& phi, bool same=false);
 
 
 
 
 // Apanasovich & Genton 2010 
 // cross-covariances with same autocovariances 
-double xCovHUV_base(double h, double u, double v, const arma::vec& params, int q, int dim);
+double xCovHUV_base(const double& h, const double& u, const double& v, const arma::vec& params, const int& q, const int& dim);
   
 //[[Rcpp::export]]
 arma::mat xCovHUV(const arma::mat& coords, const arma::uvec& ind1, const arma::uvec& ind2, 

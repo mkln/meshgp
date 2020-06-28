@@ -6,14 +6,15 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                                       printall=F),
                    prior       = list(set_unif_bounds=NULL,
                                       beta=NULL,
+                                      sigmasq=NULL,
                                       tausq=NULL),
-                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL),
+                   starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
                    ){
 
   
   if(F){
-    axis_partition <- c(5, 5)
+    axis_partition <- c(22,22)
     coords <- coords_q
     
     num_threads <- 10
@@ -26,7 +27,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                        sigmasq=NULL,
                        tausq=NULL)
     starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
-    debug       = list(sample_beta=T, sample_tausq=T, sample_theta=T, sample_w=T)
+    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
     
   }
   
@@ -60,7 +61,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     
     sample_beta    <- debug$sample_beta
     sample_tausq   <- debug$sample_tausq
-    sample_sigmasq <- debug$sample_sigmasq
+    sample_sigmasq <- F#debug$sample_sigmasq
     sample_theta   <- debug$sample_theta
     sample_w       <- debug$sample_w
     
@@ -96,7 +97,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     if(dd == 2){
       if(q > 1){
         n_cbase <- ifelse(q > 2, 3, 1)
-        npars <- 3*q + n_cbase - 1 + 1 ##//
+        npars <- 3*q + n_cbase ##//
         
         start_theta <- rep(2, npars) %>% c(rep(1, k))
         
@@ -195,7 +196,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     cbind(X) %>% as.data.frame()
   colnames(simdata)[1] <- "ix"
   
-  simdata %<>% arrange(!!!syms(paste0("Var", 1:dd)))
+  simdata %<>% arrange(!!!syms(paste0("Var", 1:dd)), mv_id)
   colnames(simdata)[dd + (2:4)] <- c("mv_id", "y", "na_which")
   
   coords <- simdata %>% select(contains("Var"))
@@ -243,16 +244,16 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     nr_full <- nr
   }
 
-  emptyblocks <- coords_blocking %>% 
-    group_by(block) %>% 
-    summarize(avail = mean(!is.na(na_which))) %>%
-    dplyr::filter(avail==0)
-  newcol <- coords_blocking$color %>% max() %>% add(1)
-  coords_blocking %<>% mutate(color = ifelse(block %in% emptyblocks$block, newcol, color))
+  #emptyblocks <- coords_blocking %>% 
+  #  group_by(block) %>% 
+  #  summarize(avail = mean(!is.na(na_which))) %>%
+  #  dplyr::filter(avail==0)
+  #newcol <- coords_blocking$color %>% max() %>% add(1)
+  #coords_blocking %<>% mutate(color = ifelse(block %in% emptyblocks$block, newcol, color))
 
-  c_unique <- coords_blocking %>% dplyr::select(block, color) %>% unique()
-  ggroup <- c_unique %$% block
-  gcolor <- c_unique %$% color
+  #c_unique <- coords_blocking %>% dplyr::select(block, color) %>% unique()
+  #ggroup <- c_unique %$% block
+  #gcolor <- c_unique %$% color
   
   blocking <- coords_blocking$block %>% factor() %>% as.integer()
   
@@ -269,7 +270,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
   
   simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata)
   
-  #start_w <- rep(0, nr_full)
+  start_w <- rep(0, nr_full)
   
   # finally prepare data
   sort_ix     <- simdata$ix
@@ -322,22 +323,20 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     })
   
     list2env(results, environment())
-    return(list(coords    = coords,
-                indexing = indexing,
-                block_ct_obs = bco,
+    return(list(coords = coords,
+                sort_ix = sort_ix,
+                mv_id = mv_id,
+                
                 beta_mcmc    = beta_mcmc,
                 tausq_mcmc   = tausq_mcmc,
-                sigmasq_mcmc = sigmasq_mcmc,
+                #sigmasq_mcmc = sigmasq_mcmc,
                 theta_mcmc   = theta_mcmc,
                 
                 w_mcmc    = w_mcmc,
                 yhat_mcmc = yhat_mcmc,
       
                 runtime_all   = comp_time,
-                runtime_mcmc  = mcmc_time,
-                sort_ix      = sort_ix,
-                paramsd   = paramsd,
-                debug = debug
+                runtime_mcmc  = mcmc_time
                 ))
     
 }

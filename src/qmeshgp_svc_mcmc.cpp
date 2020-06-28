@@ -244,7 +244,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   
   
   double ll_upd_msg;
-  bool needs_update;
+  
   
   Rcpp::List recovered;
   
@@ -269,7 +269,7 @@ Rcpp::List qmeshgp_svc_mcmc(
       start = std::chrono::steady_clock::now();
       if(sample_w){
         mesh.gibbs_sample_w();
-        mesh.get_loglik_w(mesh.param_data);
+        //mesh.get_loglik_w(mesh.param_data);
         current_loglik = tempr*mesh.param_data.loglik_w;
         if(mesh.predicting){
           mesh.predict();
@@ -348,7 +348,7 @@ Rcpp::List qmeshgp_svc_mcmc(
         }
       
         if(accepted){
-          needs_update = true;
+          
           std::chrono::steady_clock::time_point start_copy = std::chrono::steady_clock::now();
           
           adaptivemc.count_accepted();
@@ -364,7 +364,7 @@ Rcpp::List qmeshgp_svc_mcmc(
           } 
           
         } else {
-          needs_update = false;
+          
           if(verbose_mcmc & sample_theta & debug & verbose){
             Rcpp::Rcout << "[theta] rejected (log accept. " << logaccept << ")" << endl;
           }
@@ -507,7 +507,6 @@ Rcpp::List qmeshgp_svc_mcmc(
       Rcpp::Named("sigmasq_mcmc") = sigmasq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
-      
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
       Rcpp::Named("recover") = recovered
     );

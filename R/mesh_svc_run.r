@@ -266,10 +266,11 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                   as.matrix() %>% 
                   gen_fake_coords(fixed_thresholds, 1) )
     
+    cat("Tessellating")
     # Domain partitioning and gibbs groups
-    system.time(coords_blocking <- coords %>% 
-                  as.matrix() %>%
+    system.time(coords_blocking <- coords %>% as.matrix() %>%
                   tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% cbind(na_which) )
+    cat(".\n")
     
     # check if some blocks come up totally empty
     
@@ -290,33 +291,34 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       nr_full <- nrow(coords_blocking)
     } else {
       nr_full <- nr
+      start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
     }
     
     #if(!rfc_dependence){
-      emptyblocks <- coords_blocking %>% 
-        group_by(block) %>% 
-        summarize(avail = mean(!is.na(na_which))) %>%
-        dplyr::filter(avail==0)
-      newcol <- coords_blocking$color %>% max() %>% add(1)
-      coords_blocking %<>% mutate(color = ifelse(block %in% emptyblocks$block, newcol, color))
+      #emptyblocks <- coords_blocking %>% 
+      #  group_by(block) %>% 
+      #  summarize(avail = mean(!is.na(na_which))) %>%
+      #  dplyr::filter(avail==0)
+      #newcol <- coords_blocking$color %>% max() %>% add(1)
+      #coords_blocking %<>% mutate(color = ifelse(block %in% emptyblocks$block, newcol, color))
     #}
-    c_unique <- coords_blocking %>% dplyr::select(block, color) %>% unique()
-    ggroup <- c_unique %$% block
-    gcolor <- c_unique %$% color
+    #c_unique <- coords_blocking %>% dplyr::select(block, color) %>% unique()
+    #ggroup <- c_unique %$% block
+    #gcolor <- c_unique %$% color
     
     blocking <- coords_blocking$block %>% factor() %>% as.integer()
     
     # DAG
+    cat("Building graph")
     suppressMessages(parents_children <- mesh_graph_build(coords_blocking, Mv, F))
     parents                      <- parents_children[["parents"]] 
     children                     <- parents_children[["children"]] 
     block_names                  <- parents_children[["names"]] 
     block_groups                 <- parents_children[["groups"]]#[block_names]
     indexing                     <- (1:nr_full-1) %>% split(blocking)
-
-    simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata)
+    cat(".\n")
     
-    #start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
+    suppressMessages(simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata))
     
     # finally prepare data
     sort_ix     <- simdata$ix

@@ -64,12 +64,12 @@ gen_fake_coords <- function(coordsmat, thresholds, n_threads=1){
   blockdf <- data.frame(blocks_by_fakecoord %>% apply(2, as.numeric), block=as.numeric(block))
   
   if(ncol(coordsmat)==2){
-    result <- cbind(fake_coords, blockdf) %>% 
-      mutate(color = ((L1-1)*2+(L2-1)) %% 4)
+    result <- cbind(fake_coords, blockdf) #%>% 
+      #mutate(color = ((L1-1)*2+(L2-1)) %% 4)
     return(result)
   } else {
-    result <- cbind(fake_coords, blockdf) %>% 
-      mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
+    result <- cbind(fake_coords, blockdf) #%>% 
+      #mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
     return(result)
   }
 }
@@ -82,16 +82,16 @@ tessellation_axis_parallel_fix <- function(coordsmat, thresholds, n_threads){
   block <- blocks_by_coord %>% 
     as.data.frame() %>% as.list() %>% interaction()
   blockdf <- data.frame(blocks_by_coord %>% apply(2, as.numeric), block=as.numeric(block))
-  result <- cbind(coordsmat, blockdf) %>% 
-    mutate(color = (L1+L2) %% 2)
+  result <- cbind(coordsmat, blockdf)# %>% 
+    #mutate(color = (L1+L2) %% 2)
   
   if(ncol(coordsmat)==2){
-    result <- cbind(coordsmat, blockdf) %>% 
-      mutate(color = ((L1-1)*2+(L2-1)) %% 4)
+    result <- cbind(coordsmat, blockdf) #%>% 
+      #mutate(color = ((L1-1)*2+(L2-1)) %% 4)
     return(result)
   } else {
-    result <- cbind(coordsmat, blockdf) %>% 
-      mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
+    result <- cbind(coordsmat, blockdf) #%>% 
+      #mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
     return(result)
   }
 }

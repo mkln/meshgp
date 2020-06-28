@@ -85,10 +85,10 @@ Rcpp::List qmeshgp_mv_mcmc(
   
   if(d == 2){
     if(q == 1){
-      npars = 1+1; //##
+      npars = 2; //##
     } else {
       int n_cbase = q > 2? 3: 1;
-      npars = 3*q + n_cbase - 1 + 1;
+      npars = 3*q + n_cbase; //##
     }
   } else {
     Rcpp::Rcout << "d>2 not implemented for multivariate outcomes, yet " << endl;
@@ -243,7 +243,7 @@ Rcpp::List qmeshgp_mv_mcmc(
       }
       
       
-      if(sample_sigmasq & false){
+      if(sample_sigmasq || false){
         start = std::chrono::steady_clock::now();
         mesh.gibbs_sample_sigmasq();
         current_loglik = tempr*mesh.param_data.loglik_w;

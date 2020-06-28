@@ -12,9 +12,9 @@ mesh_dep <- function(coords_blocking, M){
 mesh_graph_build <- function(coords_blocking, Mv, verbose=T){
   cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
-    cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
+    cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n())#, color=unique(color))
   } else {
-    cbl %<>% group_by(L1, L2, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n(), color=unique(color))
+    cbl %<>% group_by(L1, L2, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n())#, color=unique(color))
   }
   blocks_descr <- unique(cbl) %>% as.matrix()
   
