@@ -703,7 +703,10 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
   arma::field<arma::mat> y_pred(n_blocks);
   
   for(int j=0; j<n_blocks; j++){
-    Rcpp::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
+    if(!((j+1) % (n_blocks/10))){
+      Rcpp::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
+    }
+    
     
     int nout = newcoords(j).n_rows;
     w_pred(j) = arma::zeros(nout, mcmc);
