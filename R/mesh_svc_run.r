@@ -403,5 +403,5 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                 
                 recover   = recover
                 ))
-    
 }
+

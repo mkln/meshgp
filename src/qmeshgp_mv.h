@@ -9,7 +9,6 @@
 #include "caching_pairwise_compare.h"
 #include "covariance_functions.h"
 #include "debug.h"
- 
 #include "mgp_utils.h"
 // with indexing
 // without block extensions (obs with NA are left in)
@@ -512,7 +511,7 @@ void MeshGPmv::na_study(){
   n_loc_ne_blocks = 0;
   block_ct_obs = arma::zeros(n_blocks);//(y_blocks.n_elem);
   
-#pragma omp parallel for
+//***#pragma omp parallel for
   for(int i=0; i<n_blocks;i++){//y_blocks.n_elem; i++){
     arma::vec yvec = y.rows(indexing(i));//y_blocks(i);
     na_1_blocks(i) = arma::zeros(yvec.n_elem);
@@ -571,7 +570,6 @@ void MeshGPmv::init_cache(){
   // coords_caching_ix stores info on which layers are the same in terms of rel. distance
   
   printf("~ Starting to search block duplicates for caching\n");
-  
   //coords_caching_ix = caching_pairwise_compare_uc(coords_blocks, block_names, block_ct_obs); // uses block_names(i)-1 !
   coords_caching_ix = caching_pairwise_compare_uci(coords, indexing, block_names, block_ct_obs); // uses block_names(i)-1 !
   coords_caching = arma::unique(coords_caching_ix);
@@ -581,7 +579,7 @@ void MeshGPmv::init_cache(){
   parents_caching = arma::unique(parents_caching_ix);
   
   arma::field<arma::mat> kr_pairing(n_blocks);
-#pragma omp parallel for
+//***#pragma omp parallel for
   for(int i = 0; i<n_blocks; i++){
     //int r = reference_blocks(i);
     int u = block_names(i)-1;
@@ -590,20 +588,22 @@ void MeshGPmv::init_cache(){
     if(parents_indexing(u).n_elem > 0){//parents_coords(u).n_rows > 0){
       arma::mat cmat = coords.rows(indexing(u));
       arma::mat pmat = coords.rows(parents_indexing(u));
-      kr_pairing(u) = arma::join_vert(cmat, pmat);
+      arma::mat kr_mat_c = arma::join_vert(cmat, pmat);
+      
+      kr_pairing(u) = kr_mat_c;//arma::join_horiz(kr_mat_c, kr_mat_mvid);
     } else {
       kr_pairing(u) = arma::zeros(arma::size(parents_indexing(u)));//arma::zeros(arma::size(parents_coords(u))); // no parents
     }
   }
   
-  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
-  //kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
+  //kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
 
   kr_caching = arma::unique(kr_caching_ix);
   
   if(cached_gibbs){
     arma::field<arma::mat> gibbs_pairing(n_blocks);
-#pragma omp parallel for
+//***#pragma omp parallel for
     for(int i = 0; i<n_blocks; i++){
       int u = block_names(i)-1;
       arma::mat cmat = coords.rows(indexing(u));
@@ -688,7 +688,7 @@ void MeshGPmv::init_indexing(){
   printf("~ Indexing\n");
   message("[init_indexing] indexing, parent_indexing, children_indexing");
   
-#pragma omp parallel for
+//***#pragma omp parallel for
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
@@ -714,7 +714,7 @@ void MeshGPmv::init_finalize(){
   
   message("[init_finalize] dim_by_parent, parents_coords, children_coords");
   
-#pragma omp parallel for //**
+//***#pragma omp parallel for //**
   for(int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // layer name
     
@@ -801,7 +801,7 @@ void MeshGPmv::get_loglik_w(MeshDataMV& data){
   if(verbose){
     Rcpp::Rcout << "[get_loglik_w] entering \n";
   }
-#pragma omp parallel for //**
+//***#pragma omp parallel for //**
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
     int u = block_names(r)-1;
@@ -905,7 +905,7 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
 
   //data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
   
-#pragma omp parallel for
+//***#pragma omp parallel for
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
     //Rcpp::Rcout << block_ct_obs(u) << " " << compute_block(predicting, block_ct_obs(u), false) << endl;
@@ -915,6 +915,7 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
       //start = std::chrono::steady_clock::now();
       arma::uvec cx = arma::find( coords_caching == u_cached_ix );
       arma::mat Kcc = K_coords_cache(cx(0));
+      mvCovAG20107_inplace(Kcc, coords, qvblock_c, indexing(u), indexing(u), ai1, ai2, phi_i, thetamv, Dmat, true);
       //end = std::chrono::steady_clock::now();
       //timings(1) += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
       
@@ -967,6 +968,8 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
           Kinside
         ) , "lower")));
       } catch (...) {
+        Rcpp::Rcout << Kcc << endl;
+        Rcpp::Rcout << Kcx_Kxxic << endl;
         Rcpp::Rcout << Kinside << endl;
         Rcpp::Rcout << coords.rows(indexing(u)) << endl;
         Rcpp::Rcout << coords.rows(parents_indexing(u)) << endl;
@@ -999,7 +1002,7 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
   //if(arma::all(data.track_chol_fails == 0)){
   //  data.cholfail = false;
   //start = std::chrono::steady_clock::now();
-  #pragma omp parallel for // **
+  //***#pragma omp parallel for // **
     for(int i = 0; i<n_ref_blocks; i++){
       int r = reference_blocks(i);
       int u = block_names(r)-1;
@@ -1103,7 +1106,7 @@ void MeshGPmv::get_cond_comps_loglik_w_nocache(MeshDataMV& data){
   
   theta_transform(data);
 
-#pragma omp parallel for // **
+//***#pragma omp parallel for // **
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
     int u = block_names(r)-1;
@@ -1249,7 +1252,7 @@ void MeshGPmv::gibbs_sample_sigmasq(){
   //for(int i=0; i<n_blocks; i++){
   // int u = block_names(i)-1;
   // if(block_ct_obs(u)>0){
-  #pragma omp parallel for
+  //***#pragma omp parallel for
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
     int u = block_names(r)-1;
@@ -1302,7 +1305,7 @@ void MeshGPmv::gibbs_sample_w_omp(bool needs_update=true){
   rand_norm_mat = arma::randn(coords.n_rows);
   
   if(needs_update){
-  #pragma omp parallel for
+  //***#pragma omp parallel for
     for(int i=0; i<gibbs_caching.n_elem; i++){
       int u = gibbs_caching(i);
       //Rcpp::Rcout << "gibbs_sample_w_omp caching step - block " << u << "\n";
@@ -1325,7 +1328,7 @@ void MeshGPmv::gibbs_sample_w_omp(bool needs_update=true){
   
   for(int g=0; g<n_gibbs_groups-predict_group_exists; g++){
     //int g = gibbs_groups_reorder(go);
-#pragma omp parallel for
+//***#pragma omp parallel for
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
@@ -1399,7 +1402,7 @@ void MeshGPmv::gibbs_sample_w_omp_nocache(bool needs_update=true){
   
   for(int g=0; g<n_gibbs_groups-predict_group_exists; g++){
     //int g = gibbs_groups_reorder(go);
-    #pragma omp parallel for
+    //***#pragma omp parallel for
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       //if(compute_block(predicting, block_ct_obs(u), false)){
@@ -1488,7 +1491,7 @@ void MeshGPmv::gibbs_sample_w_omp_nocache(bool needs_update=true){
 
 void MeshGPmv::predict(bool needs_update=true){
   if(predict_group_exists == 1){
-  #pragma omp parallel for
+  //***#pragma omp parallel for
     for(int i=0; i<u_predicts.n_elem; i++){
       int u = u_predicts(i);
       

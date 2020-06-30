@@ -3,6 +3,22 @@
 
 using namespace std;
 
+arma::mat vec_to_symmat(const arma::vec& x){
+  int k = x.n_elem; // = p(p-1)/2
+  int p = ( 1 + sqrt(1 + 8*k) )/2;
+  
+  arma::mat res = arma::zeros(p, p);
+  int start_i=1;
+  int ix=0;
+  for(int j=0; j<p; j++){
+    for(int i=start_i; i<p; i++){
+      res(i, j) = x(ix);
+      ix ++;
+    }
+    start_i ++;
+  } 
+  return arma::symmatl(res);
+}
 
 // exponential covariance
 arma::mat cexpcov(const arma::mat& x, const arma::mat& y, const double& sigmasq, const double& phi, bool same){
@@ -233,6 +249,8 @@ double C_base(const double& h, const double& u, const double& v, const arma::vec
   }
 }
 
+
+
 void mvCovAG20107_inplace(arma::mat& res,
                           const arma::mat& coords, 
                           const arma::uvec& qv_block,
@@ -305,7 +323,6 @@ void mvCovAG20107_inplace(arma::mat& res,
       }
       //return res;
     }
-    
   }
 }
 
@@ -322,3 +339,58 @@ arma::mat mvCovAG20107(const arma::mat& coords, const arma::uvec& qv_block,
                        Dmat, same);
   return res;
 }
+
+
+// for predictions
+
+arma::mat mvCovAG20107_cx(const arma::mat& coords1,
+                          const arma::uvec& qv_block1,
+                          const arma::mat& coords2,
+                          const arma::uvec& qv_block2,
+                          const arma::vec& ai1, const arma::vec& ai2,
+                          const arma::vec& phi_i, const arma::vec& thetamv,
+                          const arma::mat& Dmat, bool same){
+  
+  arma::mat res = arma::zeros(coords1.n_rows, coords2.n_rows);
+  
+  int d = coords1.n_cols;
+  int p = Dmat.n_cols;
+  if((d == 2) & (p < 2)){
+    res = cexpcov(coords1, coords2, thetamv(0), thetamv(1), false);
+  } else {
+    int v_ix_i;
+    int v_ix_j;
+    double h;
+    double u;
+    double v;
+    arma::rowvec delta = arma::zeros<arma::rowvec>(d);
+    // ai1 params: cparams.subvec(0, p-1);
+    // ai2 params: cparams.subvec(p, 2*p-1);
+    // phi_i params: cparams.subvec(2*p, 3*p-1);
+    // C_base params: cparams.subvec(3*p, 3*p + k - 1); // k = q>2? 3 : 1;
+    for(int i=0; i<coords1.n_rows; i++){
+      v_ix_i = qv_block1(i);
+      double ai1_sq = ai1(v_ix_i) * ai1(v_ix_i);
+      double ai2_sq = ai2(v_ix_i) * ai2(v_ix_i);
+      arma::rowvec cxi = coords1.row(i);
+      
+      for(int j=0; j<coords2.n_rows; j++){
+        delta = cxi - coords2.row(j);
+        h = arma::norm(delta.subvec(0, 1));
+        u = d < 3? 0 : abs(delta(2));
+        
+        v_ix_j = qv_block2(j);
+        v = Dmat(v_ix_i, v_ix_j);
+        
+        if(v == 0){ // v_ix_i == v_ix_j
+          res(i, j) = ai1_sq * C_base(h, u, 0, thetamv, p, d) + 
+            ai2_sq * fphi(h, phi_i(v_ix_i));
+        } else {
+          res(i, j) =  ai1(v_ix_i) * ai1(v_ix_j) * C_base(h, u, v, thetamv, p, d);
+        }
+      }
+    }
+    return res;
+  }
+}
+

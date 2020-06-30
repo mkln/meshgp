@@ -5,12 +5,20 @@ caching_pairwise_compare_uci <- function(coords, indexing, names, ct_obs) {
     .Call(`_meshgp_caching_pairwise_compare_uci`, coords, indexing, names, ct_obs)
 }
 
+vec_to_symmat <- function(x) {
+    .Call(`_meshgp_vec_to_symmat`, x)
+}
+
 xCovHUV <- function(coords, ind1, ind2, cparams, Dmat, same = FALSE) {
     .Call(`_meshgp_xCovHUV`, coords, ind1, ind2, cparams, Dmat, same)
 }
 
 mvCovAG20107 <- function(coords, qv_block, ind1, ind2, ai1, ai2, phi_i, thetamv, Dmat, same = FALSE) {
     .Call(`_meshgp_mvCovAG20107`, coords, qv_block, ind1, ind2, ai1, ai2, phi_i, thetamv, Dmat, same)
+}
+
+mvCovAG20107_cx <- function(coords1, qv_block1, coords2, qv_block2, ai1, ai2, phi_i, thetamv, Dmat, same = FALSE) {
+    .Call(`_meshgp_mvCovAG20107_cx`, coords1, qv_block1, coords2, qv_block2, ai1, ai2, phi_i, thetamv, Dmat, same)
 }
 
 hex_to_dec <- function(hex_value) {
@@ -75,6 +83,10 @@ qmgp_sampler <- function(coords, blocking, parents, block_names, indexing, theta
 
 qmeshgp_mv_mcmc <- function(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
     .Call(`_meshgp_qmeshgp_mv_mcmc`, y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
+}
+
+mvmesh_predict_by_block_base <- function(newcoords, new_mv_id, newx, names, w_mcmc, theta_mcmc, beta_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, mv_id, npars, dd, pp, n_threads = 10L) {
+    .Call(`_meshgp_mvmesh_predict_by_block_base`, newcoords, new_mv_id, newx, names, w_mcmc, theta_mcmc, beta_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, mv_id, npars, dd, pp, n_threads)
 }
 
 qmeshgp_svc_mcmc <- function(y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, start_w, theta, beta, tausq, sigmasq, mcmcsd, recover, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, saving = TRUE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {

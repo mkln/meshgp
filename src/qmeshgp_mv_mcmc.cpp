@@ -507,12 +507,8 @@ Rcpp::List qmeshgp_mv_mcmc(
       Rcpp::Named("pix") = mesh.parents_indexing,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
       Rcpp::Named("ll") = llsave,
-      Rcpp::Named("bco") = mesh.block_ct_obs,
-      Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
-      Rcpp::Named("debug") = Rcpp::List::create(Rcpp::Named("wcore") = mesh.param_data.wcore,
-                  Rcpp::Named("loglik_w_comps") = mesh.param_data.loglik_w_comps,
-                  Rcpp::Named("logdetCi_comps") = mesh.param_data.logdetCi_comps,
-                  Rcpp::Named("u_is_which_col_f") = mesh.u_is_which_col_f)
+      Rcpp::Named("parents_indexing") = mesh.parents_indexing,
+      Rcpp::Named("mcmc_time") = mcmc_time/1000.0
     );
     
   } catch (...) {
@@ -536,4 +532,241 @@ Rcpp::List qmeshgp_mv_mcmc(
     );
   }
   
+}
+
+
+
+void theta_transform(arma::vec& ai1, arma::vec& ai2, 
+                     arma::vec& phi_i, arma::vec& thetamv,
+                     arma::mat& Dmat,
+                     const arma::vec& theta, int npars, int dd, int q){
+  // from vector to all covariance components
+  int k = theta.n_elem - npars; // number of cross-distances = p(p-1)/2
+  
+  arma::vec cparams = theta.subvec(0, npars - 1);//##arma::join_vert(sigmasq * arma::ones(1), data.theta.subvec(0, npars - 1));
+  if((dd == 2) & (q == 1)){
+    thetamv = cparams;//arma::join_vert(sigmasq * arma::ones(1), cparams);
+  } else {
+    int n_cbase = q > 2? 3: 1;
+    ai1 = cparams.subvec(0, q-1);
+    ai2 = cparams.subvec(q, 2*q-1);
+    phi_i = cparams.subvec(2*q, 3*q-1);
+    thetamv = cparams.subvec(3*q, 3*q+n_cbase-1);
+    
+    if(k>0){
+      Dmat = vec_to_symmat(theta.subvec(npars, npars + k - 1));
+    } else {
+      Dmat = arma::zeros(1,1);
+    }
+  } 
+}
+
+
+
+arma::mat Kpred(const arma::vec& w_par,
+                const arma::mat& coordsc,
+                const arma::uvec& qv_blockc,
+                const arma::mat& coordsx,
+                const arma::uvec& qv_blockx,
+                const arma::vec& theta,
+                int npars, int dd, int q){
+  
+  arma::vec ai1, ai2, phi_i, thetamv;
+  arma::mat Dmat;
+  theta_transform(ai1, ai2, phi_i, thetamv, Dmat, theta, npars, dd, q);
+  
+  arma::mat Kcc = mvCovAG20107_cx(coordsc, qv_blockc,
+                                  coordsc, qv_blockc,
+                                  ai1, ai2, phi_i, thetamv, Dmat, true);
+  arma::mat Kxxi = arma::inv_sympd(mvCovAG20107_cx(coordsx, qv_blockx,
+                                                   coordsx, qv_blockx,
+                                                   ai1, ai2, phi_i, thetamv, Dmat, true));
+  arma::mat Kcx = mvCovAG20107_cx(coordsc, qv_blockc,
+                                  coordsx, qv_blockx,
+                                  ai1, ai2, phi_i, thetamv, Dmat, false);
+  
+  
+  arma::vec result = arma::zeros(coordsc.n_rows);
+  arma::vec rvec = arma::randn(coordsc.n_rows);
+  arma::vec w_pred_mean = Kcx * Kxxi * w_par;
+  arma::mat Rpred = Kcc - Kcx * Kxxi * Kcx.t();
+  arma::vec Rpred_sqrtdiag = sqrt(abs(Rpred.diag()));
+  
+  result = w_pred_mean + Rpred_sqrtdiag % rvec;
+  //for(int i=0; i<coordsc.n_rows; i++){
+  //double sqrtR = sqrt(Rpred(i, i));
+  //result(i) = w_pred_mean(i) + Rpred_sqrtdiag(i) * rvec(i);
+  //}
+  
+  return result;
+}
+
+
+Rcpp::List mvmesh_predict_base(const arma::mat& newcoords,
+                               const arma::uvec& new_mv_id,
+                               const arma::mat& newx,
+                               const arma::cube& beta_mcmc,
+                               const arma::mat& theta_mcmc,
+                               const arma::field<arma::mat>& w_mcmc,
+                               const arma::mat& tausq_mcmc,
+                               const arma::field<arma::uvec>& indexing,
+                               const arma::field<arma::uvec>& parents_indexing,
+                               const arma::field<arma::uvec>& parents,
+                               const arma::mat& coords,
+                               const arma::uvec& block_ref,
+                               const arma::uvec& mv_id,
+                               int npars, int dd, int pp,
+                               int n_threads = 10
+){
+  omp_set_num_threads(n_threads);
+  
+  int mcmc = w_mcmc.n_elem;
+  int nout = newcoords.n_rows;
+  arma::mat w_pred = arma::zeros(nout, mcmc);
+  arma::mat y_pred = arma::zeros(nout, mcmc);
+  arma::uvec oneuv = arma::ones<arma::uvec>(1);
+  
+  int b = beta_mcmc.n_rows;
+  for(int i=0; i<nout; i++){
+    Rcpp::Rcout << i << endl;
+    
+    arma::mat coordsc = newcoords.rows(i*oneuv);
+    int mid = new_mv_id(i)-1;
+    arma::uvec block_mvid = oneuv * mid;
+    arma::mat newx_i = newx.rows(i * oneuv);
+//#pragma omp parallel for
+    for(int m=0; m<mcmc; m++){
+      
+      int uref = block_ref(i) - 1;
+      
+      arma::uvec block_par_index = parents_indexing(uref);
+      
+      if(parents(uref).n_elem <= dd){
+        block_par_index = arma::join_vert(indexing(uref), block_par_index);
+      } 
+      
+      arma::mat block_par_coords = coords.rows(block_par_index);
+      arma::uvec block_par_mvid = mv_id.elem(block_par_index)-1;
+      
+      arma::vec theta = theta_mcmc.col(m);
+      arma::vec w_par = w_mcmc(m).rows(block_par_index);
+      
+      arma::mat w_pred_im = Kpred(w_par, 
+                     coordsc, block_mvid,
+                     block_par_coords, block_par_mvid,
+                     theta, npars, dd, pp);
+      
+      w_pred(i, m) = w_pred_im(0,0);
+      
+      arma::vec beta = beta_mcmc.subcube(0, mid, m, b-1, mid, m);
+      double xbeta = arma::conv_to<double>::from(newx_i * beta);
+      
+      arma::vec rn = arma::randn(1);
+      y_pred(i, m) = w_pred(i, m) + xbeta + sqrt(tausq_mcmc(mid, m)) * rn(0);
+    }
+  }
+  
+  return Rcpp::List::create(
+    Rcpp::Named("w_pred") = w_pred,
+    Rcpp::Named("y_pred") = y_pred
+  );
+}
+
+//[[Rcpp::export]]
+Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
+                               const arma::field<arma::uvec>& new_mv_id,
+                               const arma::field<arma::mat>& newx,
+                               const arma::uvec& names,
+                               
+                               const arma::field<arma::mat>& w_mcmc,
+                               const arma::mat& theta_mcmc,
+                               const arma::cube& beta_mcmc,
+                               const arma::mat& tausq_mcmc,
+                               
+                               const arma::field<arma::uvec>& indexing,
+                               const arma::field<arma::uvec>& parents_indexing,
+                               const arma::field<arma::uvec>& parents,
+                               const arma::mat& coords,
+                               
+                               const arma::uvec& mv_id,
+                               int npars, int dd, int pp,
+                               int n_threads = 10
+){
+  omp_set_num_threads(n_threads);
+  arma::uvec oneuv = arma::ones<arma::uvec>(1);
+  
+  int mcmc = w_mcmc.n_elem;
+  int n_blocks = newcoords.n_elem;
+  int b = beta_mcmc.n_rows;
+  
+  arma::field<arma::mat> w_pred(n_blocks);
+  arma::field<arma::mat> y_pred(n_blocks);
+  
+  for(int j=0; j<n_blocks; j++){
+    Rcpp::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
+    
+    int nout = newcoords(j).n_rows;
+    w_pred(j) = arma::zeros(nout, mcmc);
+    y_pred(j) = arma::zeros(nout, mcmc);
+    
+    int uref = names(j) - 1;
+    arma::uvec block_par_index = parents_indexing(uref);
+    if(parents(uref).n_elem <= dd){
+      block_par_index = arma::join_vert(indexing(uref), block_par_index);
+    }
+    arma::mat block_par_coords = coords.rows(block_par_index);
+    arma::uvec block_par_mvid = mv_id.elem(block_par_index)-1;
+    
+#pragma omp parallel for
+    for(int m=0; m<mcmc; m++){
+      arma::vec theta = theta_mcmc.col(m);
+      arma::vec w_par = w_mcmc(m).rows(block_par_index);
+      
+      arma::vec ai1, ai2, phi_i, thetamv;
+      arma::mat Dmat;
+      theta_transform(ai1, ai2, phi_i, thetamv, Dmat, theta, npars, dd, pp);
+      
+      arma::mat Kxxi = arma::inv_sympd(mvCovAG20107_cx(block_par_coords, block_par_mvid,
+                                                       block_par_coords, block_par_mvid,
+                                                       ai1, ai2, phi_i, thetamv, Dmat, true));
+
+      arma::mat coordsc = newcoords(j);
+      arma::uvec block_mvid = new_mv_id(j) -1;
+      
+      arma::mat Kcc = mvCovAG20107_cx(coordsc, block_mvid,
+                                      coordsc, block_mvid,
+                                      ai1, ai2, phi_i, thetamv, Dmat, true);
+      
+      
+      arma::mat Kcx = mvCovAG20107_cx(coordsc, block_mvid,
+                                      block_par_coords, block_par_mvid,
+                                      ai1, ai2, phi_i, thetamv, Dmat, false);
+      
+      arma::vec result = arma::zeros(coordsc.n_rows);
+      arma::vec rvec = arma::randn(coordsc.n_rows);
+      arma::vec w_pred_mean = Kcx * Kxxi * w_par;
+      arma::mat Rpred = Kcc - Kcx * Kxxi * Kcx.t();
+      arma::vec Rpred_sqrtdiag = sqrt(abs(Rpred.diag()));
+      
+      result = w_pred_mean + Rpred_sqrtdiag % rvec;
+      
+      w_pred(j).col(m) = result;
+      
+      for(int i=0; i<nout; i++){
+        int mid = new_mv_id(j)(i)-1;
+        arma::mat newx_i = newx(j).rows(i * oneuv);
+        arma::vec beta = beta_mcmc.subcube(0, mid, m, b-1, mid, m);
+        double xbeta = arma::conv_to<double>::from(newx_i * beta);
+        
+        arma::vec rn = arma::randn(1);
+        y_pred(j)(i, m) = w_pred(j)(i, m) + xbeta + sqrt(tausq_mcmc(mid, m)) * rn(0);
+      }
+      
+    }
+    
+  }
+  return Rcpp::List::create(
+    Rcpp::Named("w_pred") = w_pred,
+    Rcpp::Named("y_pred") = y_pred
+  );
 }

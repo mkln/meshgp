@@ -21,6 +21,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// vec_to_symmat
+arma::mat vec_to_symmat(const arma::vec& x);
+RcppExport SEXP _meshgp_vec_to_symmat(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(vec_to_symmat(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // xCovHUV
 arma::mat xCovHUV(const arma::mat& coords, const arma::uvec& ind1, const arma::uvec& ind2, const arma::vec& cparams, const arma::mat& Dmat, bool same);
 RcppExport SEXP _meshgp_xCovHUV(SEXP coordsSEXP, SEXP ind1SEXP, SEXP ind2SEXP, SEXP cparamsSEXP, SEXP DmatSEXP, SEXP sameSEXP) {
@@ -54,6 +65,26 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
     Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
     rcpp_result_gen = Rcpp::wrap(mvCovAG20107(coords, qv_block, ind1, ind2, ai1, ai2, phi_i, thetamv, Dmat, same));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mvCovAG20107_cx
+arma::mat mvCovAG20107_cx(const arma::mat& coords1, const arma::uvec& qv_block1, const arma::mat& coords2, const arma::uvec& qv_block2, const arma::vec& ai1, const arma::vec& ai2, const arma::vec& phi_i, const arma::vec& thetamv, const arma::mat& Dmat, bool same);
+RcppExport SEXP _meshgp_mvCovAG20107_cx(SEXP coords1SEXP, SEXP qv_block1SEXP, SEXP coords2SEXP, SEXP qv_block2SEXP, SEXP ai1SEXP, SEXP ai2SEXP, SEXP phi_iSEXP, SEXP thetamvSEXP, SEXP DmatSEXP, SEXP sameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords1(coords1SEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qv_block1(qv_block1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords2(coords2SEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qv_block2(qv_block2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ai1(ai1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ai2(ai2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi_i(phi_iSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type thetamv(thetamvSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvCovAG20107_cx(coords1, qv_block1, coords2, qv_block2, ai1, ai2, phi_i, thetamv, Dmat, same));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -305,6 +336,33 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mvmesh_predict_by_block_base
+Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords, const arma::field<arma::uvec>& new_mv_id, const arma::field<arma::mat>& newx, const arma::uvec& names, const arma::field<arma::mat>& w_mcmc, const arma::mat& theta_mcmc, const arma::cube& beta_mcmc, const arma::mat& tausq_mcmc, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& parents_indexing, const arma::field<arma::uvec>& parents, const arma::mat& coords, const arma::uvec& mv_id, int npars, int dd, int pp, int n_threads);
+RcppExport SEXP _meshgp_mvmesh_predict_by_block_base(SEXP newcoordsSEXP, SEXP new_mv_idSEXP, SEXP newxSEXP, SEXP namesSEXP, SEXP w_mcmcSEXP, SEXP theta_mcmcSEXP, SEXP beta_mcmcSEXP, SEXP tausq_mcmcSEXP, SEXP indexingSEXP, SEXP parents_indexingSEXP, SEXP parentsSEXP, SEXP coordsSEXP, SEXP mv_idSEXP, SEXP nparsSEXP, SEXP ddSEXP, SEXP ppSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type newcoords(newcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type new_mv_id(new_mv_idSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type newx(newxSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type names(namesSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type w_mcmc(w_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type theta_mcmc(theta_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type beta_mcmc(beta_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type tausq_mcmc(tausq_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents_indexing(parents_indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type mv_id(mv_idSEXP);
+    Rcpp::traits::input_parameter< int >::type npars(nparsSEXP);
+    Rcpp::traits::input_parameter< int >::type dd(ddSEXP);
+    Rcpp::traits::input_parameter< int >::type pp(ppSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvmesh_predict_by_block_base(newcoords, new_mv_id, newx, names, w_mcmc, theta_mcmc, beta_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, mv_id, npars, dd, pp, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // qmeshgp_svc_mcmc
 Rcpp::List qmeshgp_svc_mcmc(const arma::mat& y, const arma::mat& X, const arma::mat& Z, const arma::mat& coords, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& sigmasq_ab, const arma::vec& tausq_ab, const arma::mat& start_w, const arma::vec& theta, const arma::vec& beta, const double& tausq, const double& sigmasq, const arma::mat& mcmcsd, const Rcpp::List& recover, int mcmc_keep, int mcmc_burn, int mcmc_thin, int num_threads, bool adapting, bool cache, bool cache_gibbs, bool rfc, bool verbose, bool debug, bool printall, bool saving, bool sample_beta, bool sample_tausq, bool sample_sigmasq, bool sample_theta, bool sample_w);
 RcppExport SEXP _meshgp_qmeshgp_svc_mcmc(SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP coordsSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP sigmasq_abSEXP, SEXP tausq_abSEXP, SEXP start_wSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP sigmasqSEXP, SEXP mcmcsdSEXP, SEXP recoverSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP cacheSEXP, SEXP cache_gibbsSEXP, SEXP rfcSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP printallSEXP, SEXP savingSEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_sigmasqSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
@@ -356,8 +414,10 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_caching_pairwise_compare_uci", (DL_FUNC) &_meshgp_caching_pairwise_compare_uci, 4},
+    {"_meshgp_vec_to_symmat", (DL_FUNC) &_meshgp_vec_to_symmat, 1},
     {"_meshgp_xCovHUV", (DL_FUNC) &_meshgp_xCovHUV, 6},
     {"_meshgp_mvCovAG20107", (DL_FUNC) &_meshgp_mvCovAG20107, 10},
+    {"_meshgp_mvCovAG20107_cx", (DL_FUNC) &_meshgp_mvCovAG20107_cx, 10},
     {"_meshgp_hex_to_dec", (DL_FUNC) &_meshgp_hex_to_dec, 1},
     {"_meshgp_hex_to_dec_vec", (DL_FUNC) &_meshgp_hex_to_dec_vec, 1},
     {"_meshgp_list_mean", (DL_FUNC) &_meshgp_list_mean, 1},
@@ -374,6 +434,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_qmgp_Cinv", (DL_FUNC) &_meshgp_qmgp_Cinv, 11},
     {"_meshgp_qmgp_sampler", (DL_FUNC) &_meshgp_qmgp_sampler, 11},
     {"_meshgp_qmeshgp_mv_mcmc", (DL_FUNC) &_meshgp_qmeshgp_mv_mcmc, 34},
+    {"_meshgp_mvmesh_predict_by_block_base", (DL_FUNC) &_meshgp_mvmesh_predict_by_block_base, 17},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 38},
     {NULL, NULL, 0}
 };

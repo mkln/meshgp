@@ -5,7 +5,7 @@ Version: 0.2
 Date: 2019-11-06
 Author: M. Peruzzi
 Maintainer: M. Peruzzi <mklnsrc@gmail.com>
-Description: Fit linear spatially-varying coefficients Q-MGP models on spatial or spatiotemporal data
+Description: Fit linear Q-MGP regression models on univariate/multivariate, spatial/spatiotemporal data
 License: CC BY 4.0
-Imports: Rcpp (>= 1.0.2)
+Imports: Rcpp (>= 1.0.3), FNN, dplyr, tidyr, magrittr, Matrix
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
