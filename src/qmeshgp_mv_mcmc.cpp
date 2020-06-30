@@ -1,7 +1,7 @@
 #include "qmeshgp_mv.h"
 #include "interrupt_handler.h"
 #include "mgp_utils.h"
-
+#include <RcppThread.h>
 
 //[[Rcpp::export]]
 Rcpp::List qmeshgp_mv_mcmc(
@@ -702,12 +702,14 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
   arma::field<arma::mat> w_pred(n_blocks);
   arma::field<arma::mat> y_pred(n_blocks);
   
+  
+  
+  #pragma omp parallel for
   for(int j=0; j<n_blocks; j++){
+
     if(!((j+1) % (n_blocks/10))){
-      Rcpp::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
+      RcppThread::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
     }
-    
-    
     int nout = newcoords(j).n_rows;
     w_pred(j) = arma::zeros(nout, mcmc);
     y_pred(j) = arma::zeros(nout, mcmc);
@@ -720,7 +722,12 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
     arma::mat block_par_coords = coords.rows(block_par_index);
     arma::uvec block_par_mvid = mv_id.elem(block_par_index)-1;
     
-#pragma omp parallel for
+    arma::mat Kxxi, Kcc, Kcx;
+    arma::vec theta_last = arma::zeros(theta_mcmc.n_rows);
+    
+    arma::mat coordsc = newcoords(j);
+    arma::uvec block_mvid = new_mv_id(j) -1;
+    
     for(int m=0; m<mcmc; m++){
       arma::vec theta = theta_mcmc.col(m);
       arma::vec w_par = w_mcmc(m).rows(block_par_index);
@@ -729,21 +736,23 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
       arma::mat Dmat;
       theta_transform(ai1, ai2, phi_i, thetamv, Dmat, theta, npars, dd, pp);
       
-      arma::mat Kxxi = arma::inv_sympd(mvCovAG20107_cx(block_par_coords, block_par_mvid,
-                                                       block_par_coords, block_par_mvid,
-                                                       ai1, ai2, phi_i, thetamv, Dmat, true));
-
-      arma::mat coordsc = newcoords(j);
-      arma::uvec block_mvid = new_mv_id(j) -1;
+      if(!arma::approx_equal(theta, theta_last, "abs_diff", 1e-6)){
+        Kxxi = arma::inv_sympd(mvCovAG20107_cx(block_par_coords, block_par_mvid,
+                                               block_par_coords, block_par_mvid,
+                                               ai1, ai2, phi_i, thetamv, Dmat, true));
+        
+        Kcc = mvCovAG20107_cx(coordsc, block_mvid,
+                              coordsc, block_mvid,
+                              ai1, ai2, phi_i, thetamv, Dmat, true);
+        
+        
+        Kcx = mvCovAG20107_cx(coordsc, block_mvid,
+                              block_par_coords, block_par_mvid,
+                              ai1, ai2, phi_i, thetamv, Dmat, false);
+        
+        theta_last = theta;
+      }
       
-      arma::mat Kcc = mvCovAG20107_cx(coordsc, block_mvid,
-                                      coordsc, block_mvid,
-                                      ai1, ai2, phi_i, thetamv, Dmat, true);
-      
-      
-      arma::mat Kcx = mvCovAG20107_cx(coordsc, block_mvid,
-                                      block_par_coords, block_par_mvid,
-                                      ai1, ai2, phi_i, thetamv, Dmat, false);
       
       arma::vec result = arma::zeros(coordsc.n_rows);
       arma::vec rvec = arma::randn(coordsc.n_rows);
