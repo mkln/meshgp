@@ -320,7 +320,7 @@ Rcpp::List qmeshgp_svc_mcmc(
           new_loglik = tempr*mesh.alter_data.loglik_w;
           current_loglik = tempr*mesh.param_data.loglik_w;
           
-          if(isnan(current_loglik)){
+          if(std::isnan(current_loglik)){
             Rcpp::Rcout << "At nan loglik: error. \n";
             throw 1;
           }
@@ -332,7 +332,7 @@ Rcpp::List qmeshgp_svc_mcmc(
             prior_logratio +
             jacobian;
           
-          if(isnan(logaccept)){
+          if(std::isnan(logaccept)){
             Rcpp::Rcout << new_param.t() << endl;
             Rcpp::Rcout << param.t() << endl;
             Rcpp::Rcout << new_loglik << " " << current_loglik << " " << jacobian << endl;
