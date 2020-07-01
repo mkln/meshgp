@@ -1,7 +1,7 @@
 #include "qmeshgp_mv.h"
 #include "interrupt_handler.h"
 #include "mgp_utils.h"
-#include <RcppThread.h>
+
 
 //[[Rcpp::export]]
 Rcpp::List qmeshgp_mv_mcmc(
@@ -702,15 +702,12 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
   arma::field<arma::mat> w_pred(n_blocks);
   arma::field<arma::mat> y_pred(n_blocks);
   
+  Rcpp::Rcout << "Predictions " << endl;
+
+  
   #pragma omp parallel for
   for(int j=0; j<n_blocks; j++){
 
-    if(n_blocks > 10){
-      if(!((j+1) % (n_blocks/10))){
-        RcppThread::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
-      }
-    }
-    
     int nout = newcoords(j).n_rows;
     w_pred(j) = arma::zeros(nout, mcmc);
     y_pred(j) = arma::zeros(nout, mcmc);

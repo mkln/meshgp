@@ -8,4 +8,4 @@ Maintainer: M. Peruzzi <mklnsrc@gmail.com>
 Description: Fit linear Q-MGP regression models on univariate/multivariate, spatial/spatiotemporal data
 License: CC BY 4.0
 Imports: Rcpp (>= 1.0.3), FNN, dplyr, tidyr, magrittr, Matrix
-LinkingTo: Rcpp, RcppArmadillo, RcppEigen, RcppThread
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen
