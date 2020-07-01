@@ -224,16 +224,20 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
   
   coords_blocking %<>% dplyr::rename(ix=sort_ix)
   
-  coords_blocking_mv <- coords_blocking %>% cbind(data.frame(mv_id=simdata$mv_id)) %>% mutate(block_mv_id = stringr::str_c(block, "-", mv_id))
+  if(F){
+    coords_blocking_mv <- coords_blocking %>% cbind(data.frame(mv_id=simdata$mv_id)) %>% mutate(block_mv_id = stringr::str_c(block, "-", mv_id))
+    
+    data_block_mv <- coords_blocking_mv %>% group_by(block_mv_id) %>% summarise(perc_avail = sum(na_which,na.rm=T)/n())
+    predict_blocks <- data_block_mv %>% filter(perc_avail == 0) %$% block_mv_id
+    
+    pred_ix <- coords_blocking_mv %>% filter(block_mv_id %in% predict_blocks) %>% pull(ix)
+    simdata_pred <- simdata %>% filter(ix %in% pred_ix)
+    
+    coords_blocking_mv %<>% filter(!(block_mv_id %in% predict_blocks))
+    coords_blocking <- coords_blocking_mv %>% dplyr::select(-mv_id, -block_mv_id)
+  }
   
-  data_block_mv <- coords_blocking_mv %>% group_by(block_mv_id) %>% summarise(perc_avail = sum(na_which,na.rm=T)/n())
-  predict_blocks <- data_block_mv %>% filter(perc_avail == 0) %$% block_mv_id
   
-  pred_ix <- coords_blocking_mv %>% filter(block_mv_id %in% predict_blocks) %>% pull(ix)
-  simdata_pred <- simdata %>% filter(ix %in% pred_ix)
-  
-  coords_blocking_mv %<>% filter(!(block_mv_id %in% predict_blocks))
-  coords_blocking <- coords_blocking_mv %>% dplyr::select(-mv_id, -block_mv_id)
   
   # check if some blocks come up totally empty
   blocks_prop <- coords_blocking[,paste0("L", 1:dd)] %>% unique()
@@ -262,6 +266,8 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
   
   simdata_in <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata)
   #simdata[is.na(simdata$ix), "ix"] <- seq(nr_start+1, nr_full)
+  
+  simdata_in %<>% arrange(!!!syms(paste0("Var", 1:dd)), mv_id)
   
   blocking <- simdata_in$block %>% factor() %>% as.integer()
   indexing                     <- (1:nrow(simdata_in)-1) %>% split(blocking)
@@ -337,26 +343,70 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                   meshdata = list(parents_children = parents_children,
                                   indexing = indexing,
                                   parents_indexing = parents_indexing,
+                                  blocking = blocking,
                                   data = simdata_in)
   )
   
-  # end with predictions
-  X_p           <- simdata_pred %>% dplyr::select(contains("X_")) %>% as.matrix()
-  colnames(X_p) <- orig_X_colnames
-  coords_p <- simdata_pred %>% dplyr::select(contains("Var")) %>% as.matrix()
-  mv_id_p  <- simdata_pred$mv_id
-  
-  predicted <- meshout %>% mvmesh_predict_by_block(X_p, coords_p, mv_id_p)
-  
-  meshout$predicted <- predicted
-    
   return(meshout)
     
 }
 
+mvmesh_predict_by_block <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
+  dd <- ncol(newcoords)
+  pp <- length(unique(meshout$mv_id))
+  k <- pp * (pp-1) / 2
+  npars <- nrow(meshout$theta_mcmc) - k
+  sort_ix <- 1:nrow(newcoords)
+  
+  # for each predicting coordinate, find which block it belongs to
+  # (instead of using original partitioning (convoluted), 
+  # use NN since the main algorithm is adding coordinates in empty areas so NN will pick those up)
+  in_coords <- meshout$coords#$meshdata$data %>% dplyr::select(contains("Var"))
+  nn_of_preds <- in_coords %>% FNN::get.knnx(newcoords, k=1, algorithm="kd_tree") %$% nn.index
+  
+  block_ref <- meshout$meshdata$data$block[nn_of_preds]
+  
+  ## by block (same block = same parents)
+  newcx_by_block     <- newcoords %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
+  new_mv_id_by_block <- new_mv_id %>% split(block_ref) %>% lapply(as.numeric)
+  newx_by_block      <- newx %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
+  names_by_block     <- names(newcx_by_block) %>% as.numeric()
+  
+  sort_ix_by_block   <- sort_ix %>% split(block_ref)
+  
+  result <- mvmesh_predict_by_block_base(newcx_by_block, new_mv_id_by_block, newx_by_block, 
+                                    names_by_block,
+                                    meshout$w_mcmc,
+                                    meshout$theta_mcmc, 
+                                meshout$beta_mcmc,
+                                meshout$tausq_mcmc,
+                                meshout$meshdata$indexing,
+                                meshout$meshdata$parents_indexing,
+                                meshout$meshdata$parents_children$parents,
+                                meshout$coords,
+                                meshout$mv_id,
+                                npars, dd, pp, n_threads)
+  
+  sort_ix_result <- do.call(c, sort_ix_by_block)
+  coords_reconstruct <- do.call(rbind, newcx_by_block)
+  mv_id_reconstruct <- do.call(c, new_mv_id_by_block)
+  coords_df <- cbind(coords_reconstruct, mv_id_reconstruct, block_ref) %>% as.data.frame() %>%
+    rename(mv_id = mv_id_reconstruct)
+  
+  #coords_df <- coords_df[order(sort_ix_result),]
+  w_preds <- do.call(rbind, result$w_pred)#[order(sort_ix_result),]
+  y_preds <- do.call(rbind, result$y_pred)#[order(sort_ix_result),]
+  
+
+  return(list("coords_pred" = coords_df,
+              "w_pred" = w_preds,
+              "y_pred" = y_preds))
+}
+
+
 mvmesh_predict <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
   #meshdata <- meshout$meshdata
-  in_coords <- meshout$meshdata$data %>% dplyr::select(contains("Var"))
+  in_coords <- meshout$coords#meshdata$data %>% dplyr::select(contains("Var"))
   dd <- ncol(in_coords)
   pp <- length(unique(meshout$mv_id))
   k <- pp * (pp-1) / 2
@@ -365,8 +415,8 @@ mvmesh_predict <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
   
   nn_of_preds <- in_coords %>% FNN::get.knnx(newcoords, k=1, algorithm="kd_tree") %$% nn.index
   
-  coords_ref <- meshout$meshdata$data[nn_of_preds,] #%>% arrange(!!!syms(paste0("L", 1:dd)), block) 
-  block_ref <- coords_ref$block
+  #coords_ref <- meshout$meshdata$blocking[nn_of_preds] #%>% arrange(!!!syms(paste0("L", 1:dd)), block) 
+  block_ref <- meshout$meshdata$blocking[nn_of_preds]
   
   newcx <- newcoords %>% as.matrix()
   
@@ -381,58 +431,4 @@ mvmesh_predict <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
                                 block_ref, meshout$meshdata$data$mv_id,
                                 npars, dd, pp, n_threads)
   return(result)
-}
-
-mvmesh_predict_by_block <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
-  dd <- ncol(newcoords)
-  pp <- length(unique(meshout$mv_id))
-  k <- pp * (pp-1) / 2
-  npars <- nrow(meshout$theta_mcmc) - k
-  sort_ix <- 1:nrow(newcoords)
-  
-  # for each predicting coordinate, find which block it belongs to
-  # (instead of using original partitioning (convoluted), 
-  # use NN since the main algorithm is adding coordinates in empty areas so NN will pick those up)
-  in_coords <- meshout$meshdata$data %>% dplyr::select(contains("Var"))
-  nn_of_preds <- in_coords %>% FNN::get.knnx(newcoords, k=1, algorithm="kd_tree") %$% nn.index
-  coords_ref <- meshout$meshdata$data[nn_of_preds,] #%>% arrange(!!!syms(paste0("L", 1:dd)), block) 
-  block_ref <- coords_ref$block
-  
-  
-  
-  ## by block (same block = same parents)
-  newcx_by_block <- newcoords %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
-  new_mv_id_by_block <- new_mv_id %>% split(block_ref) %>% lapply(as.numeric)
-  newx_by_block <- newx %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
-  names_by_block <- names(newcx_by_block) %>% as.numeric()
-  
-  sort_ix_by_block <- sort_ix %>% split(block_ref)
-  
-  result <- mvmesh_predict_by_block_base(newcx_by_block, new_mv_id_by_block, newx_by_block, 
-                                    names_by_block,
-                                    meshout$w_mcmc,
-                                    meshout$theta_mcmc, 
-                                meshout$beta_mcmc,
-                                meshout$tausq_mcmc,
-                                meshout$meshdata$indexing,
-                                meshout$meshdata$parents_indexing,
-                                meshout$meshdata$parents_children$parents,
-                                meshout$coords,
-                                meshout$meshdata$data$mv_id,
-                                npars, dd, pp, n_threads)
-  
-  sort_ix_result <- do.call(c, sort_ix_by_block)
-  coords_reconstruct <- do.call(rbind, newcx_by_block)
-  mv_id_reconstruct <- do.call(c, new_mv_id_by_block)
-  coords_df <- cbind(coords_reconstruct, mv_id_reconstruct) %>% as.data.frame() %>%
-    rename(mv_id = mv_id_reconstruct)
-  
-  coords_df <- coords_df[order(sort_ix_result),]
-  w_preds <- do.call(rbind, result$w_pred)[order(sort_ix_result),]
-  y_preds <- do.call(rbind, result$y_pred)[order(sort_ix_result),]
-  
-
-  return(list("coords_pred" = coords_df,
-              "w_pred" = w_preds,
-              "y_pred" = y_preds))
 }

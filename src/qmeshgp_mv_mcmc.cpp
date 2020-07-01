@@ -702,20 +702,22 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
   arma::field<arma::mat> w_pred(n_blocks);
   arma::field<arma::mat> y_pred(n_blocks);
   
-  
-  
   #pragma omp parallel for
   for(int j=0; j<n_blocks; j++){
 
-    if(!((j+1) % (n_blocks/10))){
-      RcppThread::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
+    if(n_blocks > 10){
+      if(!((j+1) % (n_blocks/10))){
+        RcppThread::Rcout << "Predictions at block " << j+1 << " of " << n_blocks << endl;
+      }
     }
+    
     int nout = newcoords(j).n_rows;
     w_pred(j) = arma::zeros(nout, mcmc);
     y_pred(j) = arma::zeros(nout, mcmc);
     
     int uref = names(j) - 1;
     arma::uvec block_par_index = parents_indexing(uref);
+    
     if(parents(uref).n_elem <= dd){
       block_par_index = arma::join_vert(indexing(uref), block_par_index);
     }
@@ -731,7 +733,7 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
     for(int m=0; m<mcmc; m++){
       arma::vec theta = theta_mcmc.col(m);
       arma::vec w_par = w_mcmc(m).rows(block_par_index);
-      
+    
       arma::vec ai1, ai2, phi_i, thetamv;
       arma::mat Dmat;
       theta_transform(ai1, ai2, phi_i, thetamv, Dmat, theta, npars, dd, pp);
