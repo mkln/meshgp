@@ -1165,7 +1165,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(arma::symmatu( Kxx ), "lower")));
       /*
       double nanxi = arma::accu(Kxxi_c);
-      if(isnan(nanxi)){
+      if(std::isnan(nanxi)){
         Rcpp::Rcout << data.sigmasq << endl;
         Rcpp::Rcout << "Error in inv tri chol sym(Kxx) at " << u << endl;
         data.track_chol_fails(u) = 1;
@@ -1393,7 +1393,7 @@ void MeshGPsvc::gibbs_sample_sigmasq(){
   
   double old_new_ratio = oldsigmasq / sigmasq;
   
-  if(isnan(old_new_ratio)){
+  if(std::isnan(old_new_ratio)){
     Rcpp::Rcout << oldsigmasq << " -> " << sigmasq << " ? " << bparam << endl;
     Rcpp::Rcout << "Error with sigmasq" << endl;
     throw 1;

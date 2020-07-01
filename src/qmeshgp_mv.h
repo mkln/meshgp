@@ -940,7 +940,7 @@ void MeshGPmv::get_cond_comps_loglik_w(MeshDataMV& data){
       //timings(4) += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
       
       /*double nanxi = arma::accu(Kxxi_c);
-      if(isnan(nanxi)){
+      if(std::isnan(nanxi)){
         //Rcpp::Rcout << data.sigmasq << endl;
         Rcpp::Rcout << "Error in inv tri chol sym(Kxx) at " << u << endl;
         data.track_chol_fails(u) = 1;
@@ -1242,7 +1242,7 @@ void MeshGPmv::gibbs_sample_sigmasq(){
   
   double old_new_ratio = oldsigmasq / sigmasq;
   
-  if(isnan(old_new_ratio)){
+  if(std::isnan(old_new_ratio)){
     Rcpp::Rcout << oldsigmasq << " -> " << sigmasq << " ? " << bparam << endl;
     Rcpp::Rcout << "Error with sigmasq" << endl;
     throw 1;
