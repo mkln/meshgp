@@ -81,8 +81,16 @@ qmgp_sampler <- function(coords, blocking, parents, block_names, indexing, theta
     .Call(`_meshgp_qmgp_sampler`, coords, blocking, parents, block_names, indexing, theta, Dmat, num_threads, cache, verbose, debug)
 }
 
+qmgp_mv_sampler <- function(coords, mv_id, blocking, parents, block_names, indexing, ai1, ai2, phi_i, thetamv, Dmat, num_threads = 1L, cache = FALSE, verbose = FALSE, debug = FALSE) {
+    .Call(`_meshgp_qmgp_mv_sampler`, coords, mv_id, blocking, parents, block_names, indexing, ai1, ai2, phi_i, thetamv, Dmat, num_threads, cache, verbose, debug)
+}
+
 qmeshgp_mv_mcmc <- function(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
     .Call(`_meshgp_qmeshgp_mv_mcmc`, y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
+}
+
+mvmesh_predict_base <- function(newcoords, new_mv_id, newx, beta_mcmc, theta_mcmc, w_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, block_ref, mv_id, npars, dd, pp, n_threads = 10L) {
+    .Call(`_meshgp_mvmesh_predict_base`, newcoords, new_mv_id, newx, beta_mcmc, theta_mcmc, w_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, block_ref, mv_id, npars, dd, pp, n_threads)
 }
 
 mvmesh_predict_by_block_base <- function(newcoords, new_mv_id, newx, names, w_mcmc, theta_mcmc, beta_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, mv_id, npars, dd, pp, n_threads = 10L) {

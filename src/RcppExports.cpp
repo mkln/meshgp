@@ -292,6 +292,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// qmgp_mv_sampler
+Eigen::VectorXd qmgp_mv_sampler(const arma::mat& coords, const arma::uvec& mv_id, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::vec& block_names, const arma::field<arma::uvec>& indexing, const arma::vec& ai1, const arma::vec& ai2, const arma::vec& phi_i, const arma::vec& thetamv, const arma::mat& Dmat, int num_threads, bool cache, bool verbose, bool debug);
+RcppExport SEXP _meshgp_qmgp_mv_sampler(SEXP coordsSEXP, SEXP mv_idSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP block_namesSEXP, SEXP indexingSEXP, SEXP ai1SEXP, SEXP ai2SEXP, SEXP phi_iSEXP, SEXP thetamvSEXP, SEXP DmatSEXP, SEXP num_threadsSEXP, SEXP cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type mv_id(mv_idSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type blocking(blockingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type block_names(block_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ai1(ai1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type ai2(ai2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi_i(phi_iSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type thetamv(thetamvSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Dmat(DmatSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
+    rcpp_result_gen = Rcpp::wrap(qmgp_mv_sampler(coords, mv_id, blocking, parents, block_names, indexing, ai1, ai2, phi_i, thetamv, Dmat, num_threads, cache, verbose, debug));
+    return rcpp_result_gen;
+END_RCPP
+}
 // qmeshgp_mv_mcmc
 Rcpp::List qmeshgp_mv_mcmc(const arma::vec& y, const arma::mat& X, const arma::mat& coords, const arma::uvec& mv_id, const arma::uvec& blocking, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& tausq_ab, const arma::vec& start_w, const double& sigmasq, const arma::vec& theta, const arma::vec& beta, const double& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int num_threads, bool adapting, bool cache, bool cache_gibbs, bool verbose, bool debug, bool printall, bool sample_beta, bool sample_tausq, bool sample_sigmasq, bool sample_theta, bool sample_w);
 RcppExport SEXP _meshgp_qmeshgp_mv_mcmc(SEXP ySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP mv_idSEXP, SEXP blockingSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP tausq_abSEXP, SEXP start_wSEXP, SEXP sigmasqSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP cacheSEXP, SEXP cache_gibbsSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP printallSEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_sigmasqSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
@@ -333,6 +358,33 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type sample_theta(sample_thetaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_w(sample_wSEXP);
     rcpp_result_gen = Rcpp::wrap(qmeshgp_mv_mcmc(y, X, coords, mv_id, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, verbose, debug, printall, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mvmesh_predict_base
+Rcpp::List mvmesh_predict_base(const arma::mat& newcoords, const arma::uvec& new_mv_id, const arma::mat& newx, const arma::cube& beta_mcmc, const arma::mat& theta_mcmc, const arma::field<arma::mat>& w_mcmc, const arma::mat& tausq_mcmc, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& parents_indexing, const arma::field<arma::uvec>& parents, const arma::mat& coords, const arma::uvec& block_ref, const arma::uvec& mv_id, int npars, int dd, int pp, int n_threads);
+RcppExport SEXP _meshgp_mvmesh_predict_base(SEXP newcoordsSEXP, SEXP new_mv_idSEXP, SEXP newxSEXP, SEXP beta_mcmcSEXP, SEXP theta_mcmcSEXP, SEXP w_mcmcSEXP, SEXP tausq_mcmcSEXP, SEXP indexingSEXP, SEXP parents_indexingSEXP, SEXP parentsSEXP, SEXP coordsSEXP, SEXP block_refSEXP, SEXP mv_idSEXP, SEXP nparsSEXP, SEXP ddSEXP, SEXP ppSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type newcoords(newcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type new_mv_id(new_mv_idSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type newx(newxSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type beta_mcmc(beta_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type theta_mcmc(theta_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type w_mcmc(w_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type tausq_mcmc(tausq_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents_indexing(parents_indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type block_ref(block_refSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type mv_id(mv_idSEXP);
+    Rcpp::traits::input_parameter< int >::type npars(nparsSEXP);
+    Rcpp::traits::input_parameter< int >::type dd(ddSEXP);
+    Rcpp::traits::input_parameter< int >::type pp(ppSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvmesh_predict_base(newcoords, new_mv_id, newx, beta_mcmc, theta_mcmc, w_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, block_ref, mv_id, npars, dd, pp, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -433,7 +485,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_eigenchol", (DL_FUNC) &_meshgp_eigenchol, 1},
     {"_meshgp_qmgp_Cinv", (DL_FUNC) &_meshgp_qmgp_Cinv, 11},
     {"_meshgp_qmgp_sampler", (DL_FUNC) &_meshgp_qmgp_sampler, 11},
+    {"_meshgp_qmgp_mv_sampler", (DL_FUNC) &_meshgp_qmgp_mv_sampler, 15},
     {"_meshgp_qmeshgp_mv_mcmc", (DL_FUNC) &_meshgp_qmeshgp_mv_mcmc, 34},
+    {"_meshgp_mvmesh_predict_base", (DL_FUNC) &_meshgp_mvmesh_predict_base, 17},
     {"_meshgp_mvmesh_predict_by_block_base", (DL_FUNC) &_meshgp_mvmesh_predict_by_block_base, 17},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 38},
     {NULL, NULL, 0}

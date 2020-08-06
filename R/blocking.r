@@ -1,27 +1,4 @@
 
-tessellation_civ <- function(coordsmat, Mv, n_threads, verbose=F){
-  blocks_by_coord <- part_axis_parallel(coordsmat, Mv, n_threads, verbose) %>% 
-    #apply(2, factor)
-    apply(2, function(x) sprintf("%08d", x))
-  colnames(blocks_by_coord) <- paste0("L", 1:ncol(coordsmat))
-  
-  #blocks_by_coord %>%  %>% as.data.frame() %>% as.list() %>% interaction()
-  
-  block <- blocks_by_coord %>% 
-    as.data.frame() %>% as.list() %>% interaction()
-  blockdf <- data.frame(blocks_by_coord %>% apply(2, as.numeric), block=as.numeric(block))
-  
-  if(ncol(coordsmat)==2){
-    result <- cbind(coordsmat, blockdf) %>% 
-      mutate(color = ((L1-1)*2+(L2-1)) %% 4)
-    return(result)
-  } else {
-    result <- cbind(coordsmat, blockdf) %>% 
-      mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
-    return(result)
-  }
-}
-
 
 tessellation_axis_parallel <- function(coordsmat, Mv, n_threads=1){
   
@@ -97,6 +74,25 @@ tessellation_axis_parallel_fix <- function(coordsmat, thresholds, n_threads){
 }
 
 
-
-
-
+tessellation_civ <- function(coordsmat, thresholds, n_threads){
+  
+  blocks_by_coord <- part_axis_parallel_fixed(coordsmat, thresholds, n_threads) %>% 
+    apply(2, function(x) sprintf("%03d", x))
+  colnames(blocks_by_coord) <- paste0("L", 1:ncol(coordsmat))
+  
+  block <- blocks_by_coord %>% 
+    as.data.frame() %>% as.list() %>% interaction()
+  blockdf <- data.frame(blocks_by_coord %>% apply(2, as.numeric), block=as.numeric(block))
+  result <- cbind(coordsmat, blockdf)# %>% 
+  #mutate(color = (L1+L2) %% 2)
+  
+  if(ncol(coordsmat)==2){
+    result <- cbind(coordsmat, blockdf) #%>% 
+    #mutate(color = ((L1-1)*2+(L2-1)) %% 4)
+    return(result)
+  } else {
+    result <- cbind(coordsmat, blockdf) #%>% 
+    #mutate(color = 4*(L3 %% 2) + (((L1-1)*2+(L2-1)) %% 4))
+    return(result)
+  }
+}

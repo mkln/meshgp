@@ -73,17 +73,24 @@ arma::ivec coloring(const arma::field<arma::uvec>& blanket, const arma::uvec& bl
   arma::ivec color_picker = arma::zeros<arma::ivec>(1);
   arma::ivec colors = arma::zeros<arma::ivec>(n_blocks) - 1;
   
-  int u = block_names(0) - 1;
-  colors(u) = 0;
-  
-  for(int i=1; i<n_blocks; i++){
-    u = block_names(i) - 1;
+  int start_i=0;
+  bool goon=true;
+  while(goon){
+    int u = block_names(start_i) - 1;
     if(block_ct_obs(u) > 0){
-      
+      colors(u) = 0;
+      goon = false;
+    } else {
+      colors(u) = -1;
+    }
+    start_i ++;
+  }
+  
+  for(int i=start_i; i<n_blocks; i++){
+    int u = block_names(i) - 1;
+    if(block_ct_obs(u) > 0){
       arma::ivec neighbor_colors = colors(blanket(u));
-      
       arma::ivec neighbor_colors_used = neighbor_colors(arma::find(neighbor_colors > -1));
-      
       arma::ivec colors_available = std_setdiff(color_picker, neighbor_colors_used);
       
       int choice_color = -1;

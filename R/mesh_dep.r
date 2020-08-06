@@ -10,6 +10,8 @@ mesh_dep <- function(coords_blocking, M){
 }
 
 mesh_graph_build <- function(coords_blocking, Mv, verbose=T){
+  #coords_blocking <- coords_blocking_orig %>% dplyr::select(-ix)
+  
   cbl <- coords_blocking %>% dplyr::select(-contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% group_by(L1, L2, L3, block) %>% summarize(na_which = sum(na_which, na.rm=T)/n())#, color=unique(color))
@@ -28,6 +30,9 @@ mesh_graph_build <- function(coords_blocking, Mv, verbose=T){
   
   graph_blanketed <- blanket(graphed$parents, graphed$children, graphed$names, block_ct_obs)
   groups <- coloring(graph_blanketed, graphed$names, block_ct_obs)
+  
+  #tester <- meshgp:::check_gibbs_groups(groups, graphed$parents, graphed$children, graphed$names,
+  #                                      blocks_descr[,"block"], 3)
   #cinfo <- coords_blocking %>% group_by(block) %>% summarise(L1=unique(L1), L2=unique(L2)) %>%
   #  cbind(data.frame(coloring = test_coloring))
   #ggplot(cinfo, aes(L1, L2, fill=factor(coloring), label=block)) + geom_raster() + geom_text()

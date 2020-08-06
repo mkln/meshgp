@@ -329,7 +329,7 @@ Rcpp::List qmeshgp_svc_mcmc(
           jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           
           logaccept = new_loglik - current_loglik + //prior_logratio + 
-            prior_logratio +
+            //prior_logratio +
             jacobian;
           
           if(std::isnan(logaccept)){

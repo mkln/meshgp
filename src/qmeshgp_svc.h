@@ -577,6 +577,8 @@ void MeshGPsvc::make_gibbs_groups(){
     predict_group_exists = 0;
   }
   
+  Rcpp::Rcout << "predict group? " << predict_group_exists << endl;
+  
   arma::field<arma::vec> u_by_block_groups_temp(n_gibbs_groups);
   u_by_block_groups = arma::field<arma::vec>(n_gibbs_groups-predict_group_exists);
   /// create list of groups for gibbs
@@ -601,6 +603,9 @@ void MeshGPsvc::make_gibbs_groups(){
       gx ++;
     }
   }
+  
+  Rcpp::Rcout << "next loop" << endl;
+
   
   if(predict_group_exists == 1){
     int p=0; 

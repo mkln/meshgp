@@ -601,7 +601,7 @@ arma::mat Kpred(const arma::vec& w_par,
   return result;
 }
 
-
+//[[Rcpp::export]]
 Rcpp::List mvmesh_predict_base(const arma::mat& newcoords,
                                const arma::uvec& new_mv_id,
                                const arma::mat& newx,

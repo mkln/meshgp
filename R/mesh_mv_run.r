@@ -1,4 +1,5 @@
 mvmeshgp <- function(y, X, coords, mv_id, axis_partition, 
+                   thresholds_user = NULL,
                    mcmc        = list(keep=1000, burn=0, thin=1),
                    num_threads = 10,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F,
@@ -30,7 +31,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                        tausq=NULL)
     starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
     debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
-    
+    axis_partition <- rep(round(sqrt(nrow(coords)/5)), ncol(coords))
   }
   
   # init
@@ -45,7 +46,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
   
   Mv <- axis_partition
   
-  
+  # data management pt 1
   if(1){
     mcmc_keep <- mcmc$keep
     mcmc_burn <- mcmc$burn
@@ -182,79 +183,87 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     }
   }
 
-  # data management
-  if(is.null(colnames(X))){
-    orig_X_colnames <- colnames(X) <- paste0('X_', 1:ncol(X))
-  } else {
-    orig_X_colnames <- colnames(X)
-    colnames(X)     <- paste0('X_', 1:ncol(X))
-  }
-  
-  colnames(coords)  <- paste0('Var', 1:dd)
-  
-  na_which <- ifelse(!is.na(y), 1, NA)
-  simdata <- 1:nrow(coords) %>% cbind(coords, mv_id) %>% 
-    cbind(y) %>% cbind(na_which) %>% 
-    cbind(X) %>% as.data.frame()
-  colnames(simdata)[1] <- "ix"
-  
-  simdata %<>% arrange(!!!syms(paste0("Var", 1:dd)), mv_id)
-  colnames(simdata)[dd + (2:4)] <- c("mv_id", "y", "na_which")
-  
-  coords <- simdata %>% select(contains("Var"))
-  simdata %<>% mutate(type="obs")
-  sort_ix     <- simdata$ix
-
-  if(!is.matrix(coords)){
-    coords %<>% as.matrix()
-  }
-
-  # Domain partitioning and gibbs groups
-  fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], Mv[i])) 
-  
-  # guaranteed to produce blocks using Mv
-  system.time(fake_coords_blocking <- coords %>% 
-                as.matrix() %>% 
-                gen_fake_coords(fixed_thresholds, 1) )
-  
-  # Domain partitioning and gibbs groups
-  system.time(coords_blocking <- coords %>% 
-                as.matrix() %>%
-                tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
-  
-  coords_blocking %<>% dplyr::rename(ix=sort_ix)
-  
-  if(F){
-    coords_blocking_mv <- coords_blocking %>% cbind(data.frame(mv_id=simdata$mv_id)) %>% mutate(block_mv_id = stringr::str_c(block, "-", mv_id))
+  # data management pt 2
+  if(1){
+    # data management
+    if(is.null(colnames(X))){
+      orig_X_colnames <- colnames(X) <- paste0('X_', 1:ncol(X))
+    } else {
+      orig_X_colnames <- colnames(X)
+      colnames(X)     <- paste0('X_', 1:ncol(X))
+    }
     
-    data_block_mv <- coords_blocking_mv %>% group_by(block_mv_id) %>% summarise(perc_avail = sum(na_which,na.rm=T)/n())
-    predict_blocks <- data_block_mv %>% filter(perc_avail == 0) %$% block_mv_id
+    colnames(coords)  <- paste0('Var', 1:dd)
     
-    pred_ix <- coords_blocking_mv %>% filter(block_mv_id %in% predict_blocks) %>% pull(ix)
-    simdata_pred <- simdata %>% filter(ix %in% pred_ix)
+    na_which <- ifelse(!is.na(y), 1, NA)
+    simdata <- 1:nrow(coords) %>% cbind(coords, mv_id) %>% 
+      cbind(y) %>% cbind(na_which) %>% 
+      cbind(X) %>% as.data.frame()
+    colnames(simdata)[1] <- "ix"
     
-    coords_blocking_mv %<>% filter(!(block_mv_id %in% predict_blocks))
-    coords_blocking <- coords_blocking_mv %>% dplyr::select(-mv_id, -block_mv_id)
-  }
-  
-  
-  
-  # check if some blocks come up totally empty
-  blocks_prop <- coords_blocking[,paste0("L", 1:dd)] %>% unique()
-  blocks_fake <- fake_coords_blocking[,paste0("L", 1:dd)] %>% unique()
-  if(nrow(blocks_fake) != nrow(blocks_prop)){
-    cat("Adding fake coords to avoid empty blocks ~ don't like? Use lower Mv\n")
-    # with current Mv, some blocks are completely empty
-    # this messes with indexing. so we add completely unobserved coords
-    suppressMessages(adding_blocks <- blocks_fake %>% dplyr::setdiff(blocks_prop) %>%
-                       left_join(fake_coords_blocking))
-    coords_blocking <- bind_rows(coords_blocking, adding_blocks)
+    simdata %<>% arrange(!!!syms(paste0("Var", 1:dd)), mv_id)
+    colnames(simdata)[dd + (2:4)] <- c("mv_id", "y", "na_which")
     
-    coords_blocking %<>% arrange(!!!syms(paste0("Var", 1:dd)))
+    coords <- simdata %>% select(contains("Var"))
+    simdata %<>% mutate(type="obs")
+    sort_ix     <- simdata$ix
     
-    nr_full <- nrow(coords_blocking)
-  } else {
-    nr_full <- nr
+    if(!is.matrix(coords)){
+      coords %<>% as.matrix()
+    }
+    
+    # Domain partitioning and gibbs groups
+    if(is.null(thresholds_user)){
+      fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], Mv[i])) 
+    } else {
+      fixed_thresholds <- thresholds_user
+    }
+    
+    # guaranteed to produce blocks using Mv
+    system.time(fake_coords_blocking <- coords %>% 
+                  as.matrix() %>% 
+                  gen_fake_coords(fixed_thresholds, 1) )
+    
+    # Domain partitioning and gibbs groups
+    system.time(coords_blocking <- coords %>% 
+                  as.matrix() %>%
+                  tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
+    
+    coords_blocking %<>% dplyr::rename(ix=sort_ix)
+    
+    if(F){
+      coords_blocking_mv <- coords_blocking %>% cbind(data.frame(mv_id=simdata$mv_id)) %>% mutate(block_mv_id = stringr::str_c(block, "-", mv_id))
+      
+      data_block_mv <- coords_blocking_mv %>% group_by(block_mv_id) %>% summarise(perc_avail = sum(na_which,na.rm=T)/n())
+      predict_blocks <- data_block_mv %>% filter(perc_avail == 0) %$% block_mv_id
+      
+      pred_ix <- coords_blocking_mv %>% filter(block_mv_id %in% predict_blocks) %>% pull(ix)
+      simdata_pred <- simdata %>% filter(ix %in% pred_ix)
+      
+      coords_blocking_mv %<>% filter(!(block_mv_id %in% predict_blocks))
+      coords_blocking <- coords_blocking_mv %>% dplyr::select(-mv_id, -block_mv_id)
+    }
+    
+    
+    
+    # check if some blocks come up totally empty
+    blocks_prop <- coords_blocking[,paste0("L", 1:dd)] %>% unique()
+    blocks_fake <- fake_coords_blocking[,paste0("L", 1:dd)] %>% unique()
+    if(nrow(blocks_fake) != nrow(blocks_prop)){
+      cat("Adding fake coords to avoid empty blocks ~ don't like? Use lower Mv\n")
+      # with current Mv, some blocks are completely empty
+      # this messes with indexing. so we add completely unobserved coords
+      suppressMessages(adding_blocks <- blocks_fake %>% dplyr::setdiff(blocks_prop) %>%
+                         left_join(fake_coords_blocking))
+      coords_blocking <- bind_rows(coords_blocking, adding_blocks)
+      
+      coords_blocking %<>% arrange(!!!syms(paste0("Var", 1:dd)))
+      
+      nr_full <- nrow(coords_blocking)
+    } else {
+      nr_full <- nr
+    }
+    
   }
   
   # DAG
@@ -420,7 +429,7 @@ mvmesh_predict <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
   
   newcx <- newcoords %>% as.matrix()
   
-  result <- mvmesh_predict_base(newcx, new_mv_id, newx, 
+  result <- meshgp:::mvmesh_predict_base(newcx, new_mv_id, newx, 
                                 meshout$beta_mcmc,
                                 meshout$theta_mcmc, meshout$w_mcmc,
                                 meshout$tausq_mcmc,

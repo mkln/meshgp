@@ -29,7 +29,6 @@ Eigen::SparseMatrix<double> eigenchol(//Eigen::MatrixXd& solved1,
 
 void expand_grid_with_values_(arma::umat& locs,
                               arma::vec& vals,
-                              
                                      int rowstart, int rowend,
                                      const arma::uvec& x1,
                                      const arma::uvec& x2,
@@ -116,7 +115,8 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
         arma::mat Kxxi = arma::inv_sympd(xCovHUV(coords, parents_indexing(u), parents_indexing(u), theta, Dmat, true));
         arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), theta, Dmat, false);
         arma::mat Hj = Kcx * Kxxi;
-        arma::mat Rji = arma::inv( arma::chol( arma::symmatu(Kcc - Kcx * Kxxi * Kcx.t()), "lower"));
+        arma::mat Rji = arma::inv_sympd(Kcc - Kcx * Kxxi * Kcx.t()); 
+         //arma::inv( arma::chol( arma::symmatu(Kcc - Kcx * Kxxi * Kcx.t()), "lower"));
         
         expand_grid_with_values_(Hlocs, Hvals, Adims(i), Adims(i+1),
                                  indexing(u), parents_indexing(u), Hj);
@@ -125,7 +125,7 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
                                  indexing(u), indexing(u), Rji);
         
       } else {
-        arma::mat Rji = arma::inv( arma::chol( arma::symmatu(Kcc), "lower"));
+        arma::mat Rji = arma::inv_sympd(Kcc); //arma::inv( arma::chol( arma::symmatu(Kcc), "lower"));
         expand_grid_with_values_(Dlocs2, Dvals2, Ddims(i), Ddims(i+1),
                                  indexing(u), indexing(u), Rji);
         
@@ -154,9 +154,9 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
   Eigen::SparseMatrix<double> Dice2(n,n);
   Dice2.setFromTriplets(tripletList_Dic2.begin(), tripletList_Dic2.end());
   
-  Eigen::SparseMatrix<double> L = (I_eig-He).triangularView<Eigen::Lower>().transpose() * Dice2;
+  Eigen::SparseMatrix<double> L = (I_eig-He).triangularView<Eigen::Lower>().transpose();
   
-  return L * L.transpose();
+  return L * Dice2 * L.transpose();
 }
 
 
@@ -327,13 +327,134 @@ Eigen::VectorXd qmgp_sampler(
 }
 
 
-
-
-
-
-
-
-
+//[[Rcpp::export]]
+Eigen::VectorXd qmgp_mv_sampler(
+    const arma::mat& coords, 
+    const arma::uvec& mv_id,
+    
+    const arma::uvec& blocking,
+    
+    const arma::field<arma::uvec>& parents,
+    
+    const arma::vec& block_names,
+    
+    const arma::field<arma::uvec>& indexing,
+    
+    const arma::vec& ai1,
+    const arma::vec& ai2,
+    const arma::vec& phi_i,
+    const arma::vec& thetamv,
+    const arma::mat& Dmat,
+    
+    int num_threads = 1,
+    
+    bool cache=false,
+    
+    bool verbose=false,
+    bool debug=false){
+  
+  int n = coords.n_rows;
+  
+  omp_set_num_threads(num_threads);
+  
+  int n_blocks = block_names.n_elem;
+  
+  arma::field<arma::uvec> parents_indexing(n_blocks);
+  
+  arma::uvec Adims = arma::zeros<arma::uvec>(n_blocks+1);
+  arma::uvec Ddims = arma::zeros<arma::uvec>(n_blocks+1);
+  
+  arma::uvec qvblock_c = mv_id-1;
+  
+//***#pragma omp parallel for
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i)-1;
+    if(parents(u).n_elem > 0){
+      arma::field<arma::uvec> pixs(parents(u).n_elem);
+      for(int pi=0; pi<parents(u).n_elem; pi++){
+        pixs(pi) = indexing(parents(u)(pi));//arma::find( blocking == parents(u)(pi)+1 ); // parents are 0-indexed 
+      }
+      parents_indexing(u) = field_v_concat_uv(pixs);
+      Adims(i+1) = indexing(u).n_elem * parents_indexing(u).n_elem;
+    }
+    Ddims(i+1) = indexing(u).n_elem * indexing(u).n_elem;
+  }
+  
+  int Asize = arma::accu(Adims);
+  Adims = arma::cumsum(Adims);
+  
+  arma::umat Hlocs = arma::zeros<arma::umat>(2, Asize);
+  arma::vec Hvals = arma::zeros(Asize);
+  
+  int Dsize = arma::accu(Ddims);
+  Ddims = arma::cumsum(Ddims);
+  
+  arma::umat Dlocs2 = arma::zeros<arma::umat>(2, Dsize);
+  arma::vec Dvals2 = arma::zeros(Dsize);
+  
+#pragma omp parallel for 
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i)-1;
+    
+    //Rcpp::Rcout << u << endl; 
+    //Rcpp::Rcout << indexing(u) << endl;
+    
+    arma::mat Kcc = mvCovAG20107(coords, qvblock_c, indexing(u), indexing(u), ai1, ai2, phi_i, thetamv, Dmat, true);
+    
+    if(parents(u).n_elem > 0){
+      arma::mat Kxx = mvCovAG20107(coords, qvblock_c, parents_indexing(u), parents_indexing(u), ai1, ai2, phi_i, thetamv, Dmat, true);
+      arma::mat Kxxi = arma::inv_sympd(Kxx);
+      
+      arma::mat Kcx = mvCovAG20107(coords, qvblock_c, indexing(u), parents_indexing(u), ai1, ai2, phi_i, thetamv, Dmat, false);
+      arma::mat Hj = Kcx * Kxxi;
+      arma::mat Rj = Kcc - Hj * Kcx.t();// ), "lower"));
+      
+      expand_grid_with_values_(Hlocs, Hvals, Adims(i), Adims(i+1),
+                               indexing(u), parents_indexing(u), Hj);
+      
+      expand_grid_with_values_(Dlocs2, Dvals2, Ddims(i), Ddims(i+1),
+                               indexing(u), indexing(u), arma::chol(arma::symmatu(Rj), "lower"));
+      
+    } else {
+      expand_grid_with_values_(Dlocs2, Dvals2, Ddims(i), Ddims(i+1),
+                               indexing(u), indexing(u), arma::chol(arma::symmatu(Kcc), "lower"));
+      
+    }
+  }
+  
+  // EIGEN
+  Eigen::SparseMatrix<double> I_eig(n, n);
+  I_eig.setIdentity();
+  
+  typedef Eigen::Triplet<double> T;
+  std::vector<T> tripletList_H;
+  std::vector<T> tripletList_Dic2;
+  
+  tripletList_H.reserve(Hlocs.n_cols);
+  for(int i=0; i<Hlocs.n_cols; i++){
+    tripletList_H.push_back(T(Hlocs(0, i), Hlocs(1, i), Hvals(i)));
+  }
+  Eigen::SparseMatrix<double> He(n,n);
+  He.setFromTriplets(tripletList_H.begin(), tripletList_H.end());
+  
+  arma::vec rnorm_sample = arma::randn(n);
+  Eigen::VectorXd enormvec = armavec_to_vectorxd(rnorm_sample);
+  tripletList_Dic2.reserve(Dlocs2.n_cols);
+  for(int i=0; i<Dlocs2.n_cols; i++){
+    tripletList_Dic2.push_back(T(Dlocs2(0, i), Dlocs2(1, i), Dvals2(i)));
+  }
+  Eigen::SparseMatrix<double> Dice2(n,n);
+  Dice2.setFromTriplets(tripletList_Dic2.begin(), tripletList_Dic2.end());
+  Eigen::MatrixXd enormvecother = Dice2 * enormvec;
+  Eigen::VectorXd sampled = (I_eig-He).triangularView<Eigen::Lower>().solve(enormvecother);
+  
+  return sampled;
+//return Rcpp::List::create(
+//    Rcpp::Named("ImH") = (I_eig-He),
+//    Rcpp::Named("D") = Dice2,
+//    Rcpp::Named("sampled") = sampled
+//  );
+}
 
 
 

@@ -291,8 +291,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       nr_full <- nrow(coords_blocking)
     } else {
       nr_full <- nr
-      start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
     }
+    start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
     
     #if(!rfc_dependence){
       #emptyblocks <- coords_blocking %>% 
