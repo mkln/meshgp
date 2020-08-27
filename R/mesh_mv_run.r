@@ -8,7 +8,9 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                    prior       = list(set_unif_bounds=NULL,
                                       beta=NULL,
                                       sigmasq=NULL,
-                                      tausq=NULL),
+                                      tausq=NULL,
+                                      toplim = 1e5,
+                                      btmlim = 1e-5),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
                    ){
@@ -92,10 +94,17 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
     stime_biv      <- (dd==3) & (q==2) 
     stime_mul      <- (dd==3) & (q >2)  
     
+    if(is.null(prior$btmlim)){
+      btmlim <- 1e-5
+    } else {
+      btmlim <- prior$btmlim
+    }
     
-    toplim <- 1e5
-    btmlim <- 1e-5
-    
+    if(is.null(prior$toplim)){
+      toplim <- 1e5
+    } else {
+      toplim <- prior$toplim
+    }
     
     if(dd == 2){
       if(q > 1){

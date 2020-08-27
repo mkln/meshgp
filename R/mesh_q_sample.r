@@ -2,7 +2,6 @@
 
 rqmeshgp_mv <- function(coords, mv_id, axis_partition, ai1, ai2, phi_i, thetamv, Dmat, cache=F, n_threads=4){
   
-  set.seed(300)
   if(F){
     library(Matrix)
     library(meshgp)

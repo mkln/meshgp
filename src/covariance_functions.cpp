@@ -38,7 +38,8 @@ arma::mat cexpcov(const arma::mat& x, const arma::mat& y, const double& sigmasq,
   }
 }
 
-double xCovHUV_base(const double& h, const double& u, const double& v, const arma::vec& params, const int& q, const int& dim){
+double xCovHUV_base(const double& h, const double& u, const double& v, 
+                    const arma::vec& params, const int& q, const int& dim){
   //Rcpp::Rcout << "h: " << h << " u: " << u << " v: " << v << " | q: " << q << " dim: " << dim << endl;
   // Gneiting 2002 uses phi and psi as above ( beta here is kappa in covariance_functions.cpp )
   // hsq = ||h||^2, u = |u|^2 are squared norms. v = d_ij is "distance" between var. i and var. j

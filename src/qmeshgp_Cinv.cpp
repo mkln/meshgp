@@ -9,7 +9,7 @@
 #include "caching_pairwise_compare.h"
 #include "covariance_functions.h"
 
-#define EIGEN_USE_MKL_ALL 1
+//#define EIGEN_USE_MKL_ALL 1
 
 Eigen::VectorXd armavec_to_vectorxd(arma::vec arma_A) {
   
@@ -437,6 +437,7 @@ Eigen::VectorXd qmgp_mv_sampler(
   Eigen::SparseMatrix<double> He(n,n);
   He.setFromTriplets(tripletList_H.begin(), tripletList_H.end());
   
+  Rcpp::RNGScope scope;
   arma::vec rnorm_sample = arma::randn(n);
   Eigen::VectorXd enormvec = armavec_to_vectorxd(rnorm_sample);
   tripletList_Dic2.reserve(Dlocs2.n_cols);
