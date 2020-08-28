@@ -120,7 +120,7 @@ Rcpp::List qmeshgp_mv_mcmc(
   //tsqi_unif_bounds.col(1).fill(1000-1e-5);
   //arma::mat set_unif_bounds = set_unif_bounds_in;
   arma::mat set_unif_bounds = set_unif_bounds_in;//.rows(arma::zeros<arma::uvec>(1));//arma::join_vert(set_unif_bounds_in, tsqi_unif_bounds);
-  //Rcpp::Rcout << set_unif_bounds << endl;
+  Rcpp::Rcout << set_unif_bounds << endl;
   arma::mat metropolis_sd = arma::zeros(set_unif_bounds.n_rows, set_unif_bounds.n_rows);
   metropolis_sd.submat(0, 0, npars-1, npars-1) = mcmcsd.submat(0, 0, npars-1, npars-1);
   //metropolis_sd.submat(npars, npars, npars+q-1, npars+q-1) = .1 * arma::eye(q, q);
