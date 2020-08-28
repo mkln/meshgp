@@ -126,10 +126,10 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
         if(q > 2){
           dlim <- sqrt(q+.0)
         } else {
-          dlim <- 1e5
+          dlim <- toplim
         }
-        vbounds[,1] <- 1e-5;
-        vbounds[,2] <- dlim - 1e-5
+        vbounds[,1] <- btmlim;
+        vbounds[,2] <- dlim - btmlim
         set_unif_bounds <- rbind(set_unif_bounds, vbounds)
       
       } else {
