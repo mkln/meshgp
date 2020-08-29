@@ -7,7 +7,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                    prior       = list(set_unif_bounds=NULL,
                                       beta=NULL,
                                       sigmasq=NULL,
-                                      tausq=NULL),
+                                      tausq=NULL, toplim=1e5, btmlim=1e5),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T),
                    recover     = list()
@@ -122,8 +122,17 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       start_theta  <- starting$theta
     }
     
-    toplim <- 1e5
-    btmlim <- 1e-2
+    if(is.null(prior$btmlim)){
+      btmlim <- 1e-5
+    } else {
+      btmlim <- prior$btmlim
+    }
+    
+    if(is.null(prior$toplim)){
+      toplim <- 1e5
+    } else {
+      toplim <- prior$toplim
+    }
     
     if(is.null(prior$set_unif_bounds)){
       if(dd == 3){
@@ -167,7 +176,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
         if(q > 2){
           dlim <- sqrt(q+.0)
         } else {
-          dlim <- 1e5
+          dlim <- toplim
         }
         vbounds[,1] <- btmlim;
         vbounds[,2] <- dlim - btmlim
