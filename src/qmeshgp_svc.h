@@ -684,16 +684,19 @@ void MeshGPsvc::init_cache(){
   // coords_caching stores the layer names of those layers that are representative
   // coords_caching_ix stores info on which layers are the same in terms of rel. distance
   
-  printf("~ Starting to search block duplicates for caching\n");
+  printf("~ Starting to search block duplicates for caching. ");
   
+  Rcpp::Rcout << "Coords";
   //coords_caching_ix = caching_pairwise_compare_uc(coords_blocks, block_names, block_ct_obs); // uses block_names(i)-1 !
   coords_caching_ix = caching_pairwise_compare_uci(coords, indexing, block_names, block_ct_obs); // uses block_names(i)-1 !
   coords_caching = arma::unique(coords_caching_ix);
   
+  Rcpp::Rcout << ". Parent coords";
   //parents_caching_ix = caching_pairwise_compare_uc(parents_coords, block_names, block_ct_obs);
   parents_caching_ix = caching_pairwise_compare_uci(coords, parents_indexing, block_names, block_ct_obs);
   parents_caching = arma::unique(parents_caching_ix);
   
+  Rcpp::Rcout << ". KR coords";
   arma::field<arma::mat> kr_pairing(n_blocks);
 #pragma omp parallel for
   for(int i = 0; i<n_blocks; i++){
@@ -709,6 +712,8 @@ void MeshGPsvc::init_cache(){
   //kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
   kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
   kr_caching = arma::unique(kr_caching_ix);
+  
+  Rcpp::Rcout << "." << endl;
   
   if(cached_gibbs){
     arma::field<arma::mat> gibbs_pairing(n_blocks);
