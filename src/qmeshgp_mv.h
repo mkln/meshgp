@@ -581,10 +581,7 @@ void MeshGPmv::init_cache(){
   arma::field<arma::mat> kr_pairing(n_blocks);
 #pragma omp parallel for
   for(int i = 0; i<n_blocks; i++){
-    //int r = reference_blocks(i);
     int u = block_names(i)-1;
-    //int u = ref_block_names(i);
-  
     if(parents_indexing(u).n_elem > 0){//parents_coords(u).n_rows > 0){
       arma::mat cmat = coords.rows(indexing(u));
       arma::mat pmat = coords.rows(parents_indexing(u));
@@ -1210,7 +1207,7 @@ void MeshGPmv::gibbs_sample_tausq(){
     
     double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
     
-    double aparam = 2.01 + ix_by_q_a(j).n_elem/2.0;
+    double aparam = 2.001 + ix_by_q_a(j).n_elem/2.0;
     double bparam = 1.0/( 1.0 + .5 * bcore );
     
     Rcpp::RNGScope scope;

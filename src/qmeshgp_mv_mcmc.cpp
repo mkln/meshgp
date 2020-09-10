@@ -227,7 +227,7 @@ Rcpp::List qmeshgp_mv_mcmc(
         
         if(mesh.predicting){
           bool predict_update = arma::approx_equal(predict_theta, mesh.param_data.theta, "absdiff", 1e-8);
-          mesh.predict(true);
+          mesh.predict(!predict_update);
           predict_theta = mesh.param_data.theta;
         }
         end = std::chrono::steady_clock::now();
