@@ -27,6 +27,7 @@ arma::mat cexpcov(const arma::mat& x, const arma::mat& y, const double& sigmasq,
 
 // Apanasovich & Genton 2010 
 // cross-covariances with same autocovariances 
+//[[Rcpp::export]]
 double xCovHUV_base(const double& h, const double& u, const double& v, const arma::vec& params, const int& q, const int& dim);
   
 //[[Rcpp::export]]

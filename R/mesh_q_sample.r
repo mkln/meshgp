@@ -95,7 +95,7 @@ qmeshgp_Cinv <- function(coords, Mv, theta, D, n_threads=4){
   nr <- nrow(coords)
   dd <- coords %>% ncol()
   na_which <- rep(1, nr)
-  coords_blocking <- coords %>% tessellation_civ(Mv, 5, F) %>% cbind(na_which)
+  coords_blocking <- coords %>% tessellation_axis_parallel(Mv, 5) %>% cbind(na_which)
   
   coords_blocking %<>% mutate(sort_ix = 1:n())
   coords_blocking %<>% arrange(block, Var1, Var2)

@@ -1,4 +1,4 @@
-meshgp <- function(y, X, Z, coords, axis_partition, 
+meshgp_dev <- function(y, X, Z, coords, axis_partition, grid_size=NULL,
                    mcmc        = list(keep=1000, burn=0, thin=1),
                    num_threads = 7,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
@@ -7,14 +7,34 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                    prior       = list(set_unif_bounds=NULL,
                                       beta=NULL,
                                       sigmasq=NULL,
-                                      tausq=NULL, toplim=1e5, btmlim=1e-2),
+                                      tausq=NULL, toplim=1e5, btmlim=1e-5),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
-                   debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T),
-                   recover     = list()
+                   debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
                    ){
 
+  if(F){
+    mcmc        = list(keep=100, burn=100, thin=1)
+    num_threads = 5
+    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
+                       reference_full_coverage=F, verbose=F, debug=F, 
+                       printall=F, saving=T)
+    prior       = list(set_unif_bounds=NULL,
+                       beta=NULL,
+                       sigmasq=NULL,
+                       tausq=NULL, toplim=1e5, btmlim=1e-5)
+    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL)
+    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
+    
+    save.image("devel.RData")
+    
+  }
+  #rm(list=ls())
+  #load("devel.RData")
+  #mcmc_verbose <- T
+  #mcmc_debug <- T
+  
   # init
-  cat(" Bayesian MeshGP model with cubic tessellation & cubic mesh (Q-MGP)\n
+  cat(" Bayesian MeshGP in-development\n
     o --> o --> o
     ^     ^     ^
     |     |     | 
@@ -79,6 +99,12 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       start_beta   <- starting$beta
     }
     
+    if(is.null(starting$sigmasq)){
+      start_sigmasq <- 10
+    } else {
+      start_sigmasq  <- starting$sigmasq
+    }
+    
     space_uni      <- (dd==2) & (q==1)
     space_biv      <- (dd==2) & (q==2) 
     space_mul      <- (dd==2) & (q >2)  
@@ -121,6 +147,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     } else {
       start_theta  <- starting$theta
     }
+    
+    start_theta <- c(start_sigmasq, start_theta)
     
     if(is.null(prior$btmlim)){
       btmlim <- 1e-5
@@ -186,6 +214,10 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       set_unif_bounds <- prior$set_unif_bounds
     }
     
+    # for sigmasq
+    set_unif_bounds <- rbind(c(btmlim, toplim),
+                             set_unif_bounds)
+    
     if(is.null(prior$beta)){
       beta_Vi <- diag(ncol(X)) * 1/100
     } else {
@@ -217,11 +249,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       start_tausq    <- starting$tausq
     }
     
-    if(is.null(starting$sigmasq)){
-      start_sigmasq <- 10
-    } else {
-      start_sigmasq  <- starting$sigmasq
-    }
+    
     
     if(is.null(starting$w)){
       start_w <- rep(0, q*nr) %>% matrix(ncol=q)
@@ -252,6 +280,28 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     cbind(y) %>% cbind(na_which) %>% 
     cbind(X) %>% cbind(Z) %>% as.data.frame()
   colnames(simdata)[1] <- "ix"
+  
+  #################
+  # create grid   # 
+  data_already_on_grid <- F
+  if(!data_already_on_grid){
+    gs <- round(nrow(simdata)^(1/ncol(coords)))
+    gsize <- if(is.null(grid_size)){ rep(gs, ncol(coords)) } else { grid_size }
+    if(dd == 2){
+      gridcoords <- expand.grid(seq(min(coords[,1]), max(coords[,1]), length.out=gsize[1]),
+                                seq(min(coords[,2]), max(coords[,2]), length.out=gsize[2]))
+      #plot(coords, pch=19, cex=.2)
+      #points(gridcoords, pch=19, cex=.2, col="red")
+    } else {
+      gridcoords <- expand.grid(seq(min(coords[,1]), max(coords[,1]), length.out=gsize[1]),
+                                seq(min(coords[,2]), max(coords[,2]), length.out=gsize[2]),
+                                seq(min(coords[,3]), max(coords[,3]), length.out=gsize[3]))
+    }
+    simdata <- simdata %>% full_join(gridcoords %>% mutate(thegrid = 1))
+  }
+  
+  #################
+  
   if(dd == 2){
     simdata %<>% arrange(Var1, Var2)
     coords <- simdata %>% dplyr::select(Var1, Var2)
@@ -266,9 +316,15 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     coords %<>% as.matrix()
   }
   
-  if(length(recover) == 0){
+  #if(length(recover) == 0){
     # Domain partitioning and gibbs groups
+  if(!data_already_on_grid){
+    gridded_coords <- simdata %>% filter(thegrid==1) %>% dplyr::select(contains("Var")) %>% as.matrix()
+    fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(gridded_coords[,i], Mv[i])) 
+  } else {
     fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], Mv[i])) 
+  }
+    
     
     # guaranteed to produce blocks using Mv
     system.time(fake_coords_blocking <- coords %>% 
@@ -278,7 +334,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     cat("Tessellating")
     # Domain partitioning and gibbs groups
     system.time(coords_blocking <- coords %>% as.matrix() %>%
-                  tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% cbind(data.frame(na_which=simdata$na_which) ))
+                  tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% cbind(data.frame(na_which=simdata$na_which)) )
     cat(".\n")
     
     # check if some blocks come up totally empty
@@ -299,7 +355,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
       }
       nr_full <- nrow(coords_blocking)
     } else {
-      nr_full <- nr
+      nr_full <- nrow(coords_blocking)
     }
     start_w <- rep(0, q*nr_full) %>% matrix(ncol=q)
     
@@ -328,7 +384,22 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     cat(".\n")
     
     suppressMessages(simdata <- coords_blocking %>% dplyr::select(-na_which) %>% left_join(simdata))
+    #return(list(simdata=simdata,
+    #            parents=parents,
+    #            children=children))
     
+    predictable_blocks <- simdata %>% mutate(thegrid = ifelse(is.na(thegrid), 0, 1)) %>%
+      group_by(block) %>% summarise(thegrid=mean(thegrid, na.rm=T), perc_availab=mean(!is.na(y))) %>%
+      mutate(predict_here = ifelse(thegrid==1, perc_availab>0, 1)) %>% arrange(block) %$% predict_here
+    
+    
+    indexing_grid_ids <- simdata$thegrid %>% split(blocking)
+    indexing_grid <- list()
+    indexing_obs <- list()
+    for(i in 1:length(indexing)){
+      indexing_grid[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 1)]
+      indexing_obs[[i]] <- indexing[[i]][which(is.na(indexing_grid_ids[[i]]))]
+    }
     # finally prepare data
     sort_ix     <- simdata$ix
     
@@ -347,23 +418,16 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     coords <- simdata %>% dplyr::select(contains("Var")) %>% as.matrix()
     
     #block_groups <- check_gibbs_groups(block_groups, parents, children, block_names, blocking, 20)
-  } else {
-    cat("Restoring tessellation and graph from recovered data.\n")
-    # taking these from recovered data
-    parents      <- list()
-    children     <- list()
-    block_names  <- numeric()
-    block_groups <- numeric()
-    blocking     <- numeric()
-    indexing     <- list()
-  }
-
+    
     comp_time <- system.time({
-      results <- qmeshgp_svc_mcmc(y, X, Z, coords, blocking,
+      results <- qmeshgp_dev_mcmc(y, X, Z, coords, blocking,
                               
                               parents, children, 
                               block_names, block_groups,
-                              indexing,
+                              predictable_blocks,
+                              
+                              indexing_grid, # use grid to sample w
+                              indexing_obs,
                               
                               set_unif_bounds,
                               beta_Vi, 
@@ -378,7 +442,6 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                               
                               mcmc_mh_sd,
                               
-                              recover,
                               mcmc_keep, mcmc_burn, mcmc_thin,
                               
                               num_threads,
@@ -392,25 +455,30 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                               saving,
                               # sampling of:
                               # beta tausq sigmasq theta w
-                              sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w) 
+                              sample_beta, 
+                              sample_tausq, 
+                              sample_sigmasq, 
+                              sample_theta, 
+                              sample_w) 
     })
     
     list2env(results, environment())
     return(list(coords    = coords,
+                data = simdata,
                 sort_ix      = sort_ix,
+                
+                indexing_grid = indexing_grid,
                 
                 beta_mcmc    = beta_mcmc,
                 tausq_mcmc   = tausq_mcmc,
-                sigmasq_mcmc = sigmasq_mcmc,
+                
                 theta_mcmc   = theta_mcmc,
                 
                 w_mcmc    = w_mcmc,
                 yhat_mcmc = yhat_mcmc,
       
                 runtime_all   = comp_time,
-                runtime_mcmc  = mcmc_time,
-                
-                recover   = recover
+                runtime_mcmc  = mcmc_time
                 ))
 }
 

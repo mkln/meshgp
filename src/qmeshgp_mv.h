@@ -1198,9 +1198,10 @@ void MeshGPmv::gibbs_sample_beta(){
 void MeshGPmv::gibbs_sample_tausq(){
   start = std::chrono::steady_clock::now();
   
+  arma::vec Zw_availab = w.rows(na_ix_all);
+  arma::vec XB_availab = XB.rows(na_ix_all);
   for(int j=0; j<q; j++){
-    arma::vec Zw_availab = w.rows(na_ix_all);
-    arma::vec XB_availab = XB.rows(na_ix_all);
+    
     arma::mat yrr = y_available.rows(ix_by_q_a(j)) - XB_availab.rows(ix_by_q_a(j)) - Zw_availab.rows(ix_by_q_a(j));
     
     //Rcpp::Rcout << arma::join_horiz( arma::join_horiz(y_available.subvec(0, 10), XB_availab.subvec(0, 10)), Zw_availab.subvec(0, 10)) << endl;

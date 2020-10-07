@@ -10,7 +10,7 @@ mvmeshgp <- function(y, X, coords, mv_id, axis_partition,
                                       sigmasq=NULL,
                                       tausq=NULL,
                                       toplim = 1e5,
-                                      btmlim = 1e-5),
+                                      btmlim = 1e-2),
                    starting    = list(beta=NULL, tausq=NULL, sigmasq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, sample_sigmasq=T, sample_theta=T, sample_w=T)
                    ){
