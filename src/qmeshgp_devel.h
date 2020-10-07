@@ -11,6 +11,7 @@
 #include "debug.h"
  
 #include "mgp_utils.h"
+ 
 // with indexing
 // without block extensions (obs with NA are left in)
 
@@ -440,7 +441,7 @@ void MeshGPdev::make_gibbs_groups(){
   int gx=0;
   
   if(n_blocks > n_ref_blocks){
-    u_predicts = arma::zeros<arma::uvec>(n_blocks - n_ref_blocks);
+    u_predicts = 999999 + arma::zeros<arma::uvec>(n_blocks - n_ref_blocks);
     predict_group_exists = 1;
   } else {
     predict_group_exists = 0;
@@ -480,11 +481,16 @@ void MeshGPdev::make_gibbs_groups(){
       int u = block_names(i) - 1;
       if((block_ct_obs(u) == 0) & (predictable_blocks(u) == 1)){
         u_predicts(p) = u;
+        //Rcpp::Rcout << u << endl;
         p ++;
       }
     }
   }
+  
+  u_predicts = u_predicts.elem(arma::find(u_predicts != 999999));
+  
   message("[make_gibbs_groups] done.");
+
   //u_by_block_groups = u_by_block_groups_temp;
 }
 
