@@ -7,7 +7,7 @@ List of models that can be implemented currently:
 
  - `meshgp::meshgp()`: spatially-varying coefficients regression (SVC) using the `Z` argument to store the dynamic inputs
  - `meshgp::mvmeshgp()`: latent GP regression on multivariate outputs
- - `meshgp::meshgp_dev()`: latent GP regression on univariate output with gridded reference set $\neq$ observed locations
+ - `meshgp::meshgp_dev()`: latent GP regression on univariate output with gridded reference set != observed locations
  
 **Notes:** I'm always updating the source and some older functions/examples may break. Tested on Ubuntu 18.04 (R-4.0.2 w/ Intel MKL 2019.5 or 2020.1) and CentOS 8.2 (R-4.0.2 w/ OpenBLAS 0.3.10). Not tested on macOS or Windows yet. On CentOS, the default OpenBLAS 0.3.3 shipping with R causes segfaults due to possible conflicts with OpenMP. With OpenBLAS 0.3.10 compiled from source (using `make NO_AFFINITY=1 USE_LOCKING=1 USE_OPENMP=1`) there are no issues.
 
