@@ -1146,7 +1146,7 @@ void MeshGPdev::gibbs_sample_w_omp_nocache(){
             int child = children(u)(c);
             //Rcpp::Rcout << "g: " << g << " ~ u: " << u << " ~ child " << c << " - " << child << "\n";
             
-            arma::uvec child_is_ref = arma::find(ref_block_names == child);
+            arma::uvec child_is_ref = arma::find(ref_block_names == child, 1, "first");
             if(child_is_ref.n_elem>0){
               //Rcpp::Rcout << u_is_which_col_f(u)(c)(0).t() << "\n";
               //Rcpp::Rcout << u_is_which_col_f(u)(c)(1).t() << "\n";
@@ -1189,7 +1189,6 @@ void MeshGPdev::gibbs_sample_w_omp_nocache(){
           arma::vec w_temp = Sigi_chol.t() * (Sigi_chol * Smu_tot + rnvec); 
           w.rows(indexing(u)) = arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
           
-          
           //***
           w.rows(indexing_obs(u)) = param_data.KcxKxxi_obs(u) * w_temp;
           
@@ -1209,7 +1208,7 @@ void MeshGPdev::gibbs_sample_w_omp_nocache(){
             * hl2pi -.5 * param_data.wcore(u);
     }
   }
-  
+
   //Zw = armarowsum(Z % w); //***
   param_data.logdetCi = arma::accu(param_data.logdetCi_comps);
   param_data.loglik_w = param_data.logdetCi + arma::accu(param_data.loglik_w_comps);
