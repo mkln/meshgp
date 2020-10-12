@@ -74,7 +74,10 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
   
   int n = coords.n_rows;
   
-  omp_set_num_threads(num_threads);
+#ifdef _OPENMP
+omp_set_num_threads(num_threads);
+#endif
+  
   
   int n_blocks = block_names.n_elem;
   

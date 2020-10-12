@@ -55,7 +55,9 @@ Rcpp::List qmeshgp_mv_mcmc(
     bool sample_w=true){
   
   Rcpp::Rcout << "Preparing for MCMC." << endl;
+#ifdef _OPENMP
   omp_set_num_threads(num_threads);
+#endif
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   
@@ -617,8 +619,9 @@ Rcpp::List mvmesh_predict_base(const arma::mat& newcoords,
                                int npars, int dd, int pp,
                                int n_threads = 10
 ){
+#ifdef _OPENMP
   omp_set_num_threads(n_threads);
-  
+#endif
   int mcmc = w_mcmc.n_elem;
   int nout = newcoords.n_rows;
   arma::mat w_pred = arma::zeros(nout, mcmc);
@@ -691,7 +694,9 @@ Rcpp::List mvmesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
                                int npars, int dd, int pp,
                                int n_threads = 10
 ){
-  omp_set_num_threads(n_threads);
+#ifdef _OPENMP
+omp_set_num_threads(n_threads);
+#endif
   arma::uvec oneuv = arma::ones<arma::uvec>(1);
   
   int mcmc = w_mcmc.n_elem;

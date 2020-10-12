@@ -57,7 +57,9 @@ Rcpp::List qmeshgp_dev_mcmc(
     bool sample_w=true){
   
   Rcpp::Rcout << "Preparing for MCMC." << endl;
+#ifdef _OPENMP
   omp_set_num_threads(num_threads);
+#endif
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   
