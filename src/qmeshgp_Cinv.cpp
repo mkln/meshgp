@@ -75,7 +75,7 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
   int n = coords.n_rows;
   
 #ifdef _OPENMP
-omp_set_num_threads(num_threads);
+  omp_set_num_threads(num_threads);
 #endif
   
   
@@ -192,9 +192,9 @@ Eigen::VectorXd qmgp_sampler(
     bool debug=false){
   
   int n = coords.n_rows;
-  
+#ifdef _OPENMP
   omp_set_num_threads(num_threads);
-  
+#endif
   int n_blocks = block_names.n_elem;
 
   arma::field<arma::uvec> parents_indexing(n_blocks);
@@ -374,9 +374,9 @@ Eigen::VectorXd qmgp_mv_sampler(
     bool debug=false){
   
   int n = coords.n_rows;
-  
+#ifdef _OPENMP
   omp_set_num_threads(num_threads);
-  
+#endif
   int n_blocks = block_names.n_elem;
   
   arma::field<arma::uvec> parents_indexing(n_blocks);
