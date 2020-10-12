@@ -1,16 +1,4 @@
-#include <RcppArmadillo.h>
-#include <omp.h>
-#include <stdexcept>
-
-#include "R.h"
-#include "find_nan.h"
-#include "mh_adapt.h"
-#include "field_v_concatm.h"
-#include "caching_pairwise_compare.h"
-#include "covariance_functions.h"
-#include "debug.h"
- 
-#include "mgp_utils.h"
+#include "includes.h"
  
 // with indexing
 // without block extensions (obs with NA are left in)
@@ -503,7 +491,9 @@ void MeshGPdev::na_study(){
   n_loc_ne_blocks = 0;
   block_ct_obs = arma::zeros(n_blocks);//(y_blocks.n_elem);
   
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks;i++){//y_blocks.n_elem; i++){
     // ***
     arma::vec yvec = y.rows(indexing_obs(i));//y_blocks(i);
@@ -573,7 +563,9 @@ void MeshGPdev::init_cache(){
   
   Rcpp::Rcout << ". KR coords";
   arma::field<arma::mat> kr_pairing(n_blocks);
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i = 0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents_indexing(u).n_elem > 0){//parents_coords(u).n_rows > 0){
@@ -616,7 +608,9 @@ void MeshGPdev::init_meshdata(double sigmasq_in, const arma::vec& theta_in){
   //param_data.ZK = arma::field<arma::mat> (n_blocks);//***
   param_data.KcxKxxi_obs = arma::field<arma::mat> (n_blocks); //***
   
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     param_data.w_cond_mean_K(i) = arma::zeros(q*indexing(i).n_elem, q*parents_indexing(i).n_elem);
     param_data.w_cond_cholprec(i) = arma::zeros(q*indexing(i).n_elem, q*indexing(i).n_elem);
@@ -650,7 +644,9 @@ void MeshGPdev::init_indexing(){
   message("[init_indexing] indexing, parent_indexing, children_indexing");
   
   
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
@@ -675,7 +671,9 @@ void MeshGPdev::init_finalize(){
   
   message("[init_finalize] dim_by_parent, parents_coords, children_coords");
   
+#ifdef _OPENMP
 #pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // layer name
     //if(coords_blocks(u).n_elem > 0){
@@ -692,7 +690,9 @@ void MeshGPdev::init_finalize(){
   
   message("[init_finalize] u_is_which_col_f");
   
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     //Rcpp::Rcout << "block: " << u << "\n";
@@ -769,7 +769,9 @@ void MeshGPdev::get_loglik_w(MeshDataDev& data){
   if(verbose){
     Rcpp::Rcout << "[get_loglik_w] entering \n";
   }
-#pragma omp parallel for //**
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
     int u = block_names(r)-1;
@@ -849,7 +851,9 @@ void MeshGPdev::get_cond_comps_loglik_w(MeshDataDev& data){
   theta_transform(data);
   
   message("[get_cond_comps_loglik_w] step 1 - coords.");
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i); // layer name of ith representative
     //bool calc_this_block = predicting == false? (block_ct_obs(u) > 0) : predicting;
@@ -866,7 +870,9 @@ void MeshGPdev::get_cond_comps_loglik_w(MeshDataDev& data){
   
   
   message("[get_cond_comps_loglik_w] step 2 - kr.");
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
     if(block_ct_obs(u) > 0){//compute_block(predicting, block_ct_obs(u), false)){s
@@ -918,7 +924,9 @@ void MeshGPdev::get_cond_comps_loglik_w(MeshDataDev& data){
     message("[get_cond_comps_loglik_w] step 3 - blocks.");
   //Rcpp::Rcout << "here." << endl;
   arma::vec ll_y = arma::zeros(w.n_rows);
-  #pragma omp parallel for // **
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i = 0; i<n_ref_blocks; i++){
       int r = reference_blocks(i);
       int u = block_names(r)-1;
@@ -1127,7 +1135,9 @@ void MeshGPdev::gibbs_sample_w_omp_nocache(){
   for(int g=0; g<n_gibbs_groups-predict_group_exists; g++){
     //int g = gibbs_groups_reorder(go);
     
-  #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
           arma::mat Smu_tot = arma::zeros(q*indexing(u).n_elem, 1);
@@ -1227,7 +1237,9 @@ void MeshGPdev::predict(){
       Rcpp::Rcout << "[predict] " << endl;
     }
     
-  #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i=0; i<u_predicts.n_elem; i++){
       int u = u_predicts(i);
       // only predictions at this block. 

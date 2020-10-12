@@ -1,5 +1,9 @@
 #include <RcppArmadillo.h>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
+
 #include "R.h"
 #include <stdexcept>
 #include <string>
@@ -138,7 +142,9 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
   
   if(dimen == 2){
     arma::mat Col2 = arma::zeros(Mv(0), Mv(1))-1;
-    #pragma omp parallel for 
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(int i=1; i<Mv(0)+1; i++){
       arma::mat filter_alli = layers_descr.rows(arma::find(layers_descr.col(0) == i));
       if(filter_alli.n_rows > 0){
@@ -192,7 +198,9 @@ arma::mat mesh_gibbs_groups(const arma::mat& layers_descr,
     return fincol;
   } else {
     arma::cube Col3 = arma::zeros(Mv(0), Mv(1), Mv(2))-1;
-    #pragma omp parallel for 
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(int i=1; i<Mv(0)+1; i++){
       arma::mat filter_alli = layers_descr.rows(arma::find(layers_descr.col(0) == i));
       if(filter_alli.n_rows > 0){
@@ -354,7 +362,9 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
   //Rcpp::Rcout << "~ Axis-parallel partitioning [fixed thresholds]... ";
   arma::mat resultmat = arma::zeros(arma::size(coords));
   
-  #pragma omp parallel for num_threads(n_threads)
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for(int j=0; j<coords.n_cols; j++){
     //std::vector<double> cjv = arma::conv_to<std::vector<double> >::from(coords.col(j));
     arma::vec cja = coords.col(j);
@@ -423,7 +433,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     
     start = std::chrono::steady_clock::now();
     Qm = arma::zeros(Mv(0), Mv(1))-1;
-  #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(int i=1; i<Mv(0)+1; i++){
       arma::mat filter_i    = blocks_ref.rows(arma::find(blocks_ref.col(0) == i));
       if(filter_i.n_rows > 0){
@@ -438,7 +450,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     
     if(!rfc){
       Qmall = arma::zeros(Mv(0), Mv(1))-1;
-      #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
       for(int i=1; i<Mv(0)+1; i++){
         arma::mat filter_alli = layers_descr.rows(arma::find(layers_descr.col(0) == i));
         if(filter_alli.n_rows > 0){
@@ -461,7 +475,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     int Jmax = Qm.n_cols-1;
     
     start = std::chrono::steady_clock::now();
-    #pragma omp parallel for num_threads(7)
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(int i=1; i<Mv(0)+1; i++){
       for(int j=1; j<Mv(1)+1; j++){
         //for(int h=1; h<M+1; h++){
@@ -515,7 +531,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     if(!rfc){
       start = std::chrono::steady_clock::now();
       arma::uvec empties = arma::find(Qm == -1);
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
       for(int i=0; i<empties.n_elem; i++){
         arma::uvec ijh = arma::ind2sub(arma::size(Qm), empties(i));
         
@@ -574,7 +592,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
   } else {
     start = std::chrono::steady_clock::now();
     Q = arma::zeros(Mv(0), Mv(1), Mv(2))-1;
-    #pragma omp parallel for 
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(int i=1; i<Mv(0)+1; i++){
       arma::mat filter_i = blocks_ref.rows(arma::find(blocks_ref.col(0) == i));
       if(filter_i.n_rows > 0){
@@ -595,7 +615,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     
     if(!rfc){
       Qall = arma::zeros(Mv(0), Mv(1), Mv(2))-1;
-      #pragma omp parallel for 
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
       for(int i=1; i<Mv(0)+1; i++){
         arma::mat filter_alli = layers_descr.rows(arma::find(layers_descr.col(0) == i));
         if(filter_alli.n_rows > 0){
@@ -626,7 +648,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     int Hmax = Q.n_slices-1;
     start = std::chrono::steady_clock::now();
     
-    #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for(int i=1; i<Mv(0)+1; i++){
       for(int j=1; j<Mv(1)+1; j++){
         for(int h=1; h<Mv(2)+1; h++){
@@ -777,7 +801,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
   }
   
   
-  #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for(int i=0; i<parents.n_elem; i++){
     parents(i) = parents(i).elem(arma::find(parents(i) != -1));
     children(i) = children(i).elem(arma::find(children(i) != -1));

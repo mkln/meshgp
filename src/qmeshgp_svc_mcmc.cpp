@@ -210,8 +210,7 @@ Rcpp::List qmeshgp_svc_mcmc(
   // field avoids limit in size of objects -- ideally this should be a cube
   arma::field<arma::mat> w_mcmc(mcmc_keep);
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
-  
-#pragma omp parallel for
+
   for(int i=0; i<mcmc_keep; i++){
     w_mcmc(i) = arma::zeros(mesh.w.n_rows, q);
     yhat_mcmc(i) = arma::zeros(mesh.y.n_rows, 1);

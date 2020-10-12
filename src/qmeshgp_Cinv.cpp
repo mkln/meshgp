@@ -1,7 +1,10 @@
 
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "interrupt_handler.h"
 #include "mgp_utils.h"
@@ -81,7 +84,9 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
   arma::uvec Ddims = arma::zeros<arma::uvec>(n_blocks+1);
   
   
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
@@ -107,7 +112,9 @@ Eigen::SparseMatrix<double> qmgp_Cinv(
   arma::umat Dlocs2 = arma::zeros<arma::umat>(2, Dsize);
   arma::vec Dvals2 = arma::zeros(Dsize);
   
+#ifdef _OPENMP
 #pragma omp parallel for 
+#endif
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
       arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), theta, Dmat, true);
@@ -193,7 +200,9 @@ Eigen::VectorXd qmgp_sampler(
   arma::uvec Ddims = arma::zeros<arma::uvec>(n_blocks+1);
   
   
-  #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
@@ -220,7 +229,9 @@ Eigen::VectorXd qmgp_sampler(
   arma::vec Dvals2 = arma::zeros(Dsize);
   
   if(!cache){
-    #pragma omp parallel for 
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
       arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), theta, Dmat, true);
@@ -246,7 +257,9 @@ Eigen::VectorXd qmgp_sampler(
     // caching
     arma::vec block_ct_obs = arma::ones(n_blocks);
     arma::field<arma::mat> kr_pairing(n_blocks);
-    #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i = 0; i<n_blocks; i++){
       int u = block_names(i)-1;
       if(parents_indexing(u).n_elem > 0){//parents_coords(u).n_rows > 0){
@@ -262,7 +275,9 @@ Eigen::VectorXd qmgp_sampler(
     
     arma::field<arma::mat> Hcache(kr_caching.n_elem);
     arma::field<arma::mat> Rcache(kr_caching.n_elem);
-    #pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i = 0; i<kr_caching.n_elem; i++){
       int u = kr_caching(i);
       arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), theta, Dmat, true);
@@ -273,7 +288,9 @@ Eigen::VectorXd qmgp_sampler(
     }
     // -------
     
-    #pragma omp parallel for 
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
       int kr_cached_ix = kr_caching_ix(u);
@@ -366,7 +383,9 @@ Eigen::VectorXd qmgp_mv_sampler(
   
   arma::uvec qvblock_c = mv_id-1;
   
-//***#pragma omp parallel for
+//#ifdef _OPENMP
+//#pragma omp parallel for 
+//#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
@@ -392,7 +411,9 @@ Eigen::VectorXd qmgp_mv_sampler(
   arma::umat Dlocs2 = arma::zeros<arma::umat>(2, Dsize);
   arma::vec Dvals2 = arma::zeros(Dsize);
   
+#ifdef _OPENMP
 #pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     

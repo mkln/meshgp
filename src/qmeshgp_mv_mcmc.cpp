@@ -148,7 +148,6 @@ Rcpp::List qmeshgp_mv_mcmc(
   arma::field<arma::mat> w_mcmc(mcmc_keep);
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
-#pragma omp parallel for
   for(int i=0; i<mcmc_keep; i++){
     w_mcmc(i) = arma::zeros(mesh.w.n_rows, q);
     yhat_mcmc(i) = arma::zeros(mesh.y.n_rows, 1);
