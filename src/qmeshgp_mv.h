@@ -587,8 +587,8 @@ void MeshGPmv::init_cache(){
     }
   }
   
-  //kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
-  kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
+  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  //kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names, block_ct_obs);
 
   kr_caching = arma::unique(kr_caching_ix);
   
@@ -616,8 +616,8 @@ void MeshGPmv::init_cache(){
         }
       }
     }
-    //gibbs_caching_ix = caching_pairwise_compare_uc(gibbs_pairing, block_names, block_ct_obs);
-    gibbs_caching_ix = caching_pairwise_compare_u(gibbs_pairing, block_names);
+    gibbs_caching_ix = caching_pairwise_compare_uc(gibbs_pairing, block_names, block_ct_obs);
+    //gibbs_caching_ix = caching_pairwise_compare_u(gibbs_pairing, block_names, block_ct_obs);
     gibbs_caching = arma::unique(gibbs_caching_ix);
   } else {
     gibbs_caching = arma::zeros(0);

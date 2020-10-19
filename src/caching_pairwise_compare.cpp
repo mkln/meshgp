@@ -4,7 +4,8 @@ using namespace std;
 
 
 arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
-                                            const arma::vec& names){
+                                            const arma::vec& names,
+                                            const arma::vec& block_ct_obs){
   
   // result(x) = y
   // means
@@ -29,24 +30,29 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
 #pragma omp parallel for
   for(int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
-    bool foundsame = false;
-    //Rcpp::Rcout << "u_target: " << u_target << endl;
-    for(int k=0; k<j; k++){ //blocks.n_elem; k++){
-      int u_prop = names(k)-1;
-      if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
-        // these are knots so designed, no risk of making mistakes based on tolerance here
-        // unless there are knots closer than 1e-4 apart which should be considered different!
-        bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
-        if(same){
-          result(u_target) = u_prop;
-          foundsame = true;
-          break;
+    if(block_ct_obs(u_target) > 0){
+      bool foundsame = false;
+      //Rcpp::Rcout << "u_target: " << u_target << endl;
+      for(int k=0; k<j; k++){ //blocks.n_elem; k++){
+        int u_prop = names(k)-1;
+        if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
+          // these are knots so designed, no risk of making mistakes based on tolerance here
+          // unless there are knots closer than 1e-4 apart which should be considered different!
+          bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
+          if(same){
+            result(u_target) = u_prop;
+            foundsame = true;
+            break;
+          }
         }
       }
-    }
-    if(!foundsame){
+      if(!foundsame){
+        result(u_target) = u_target;
+      }
+    } else {
       result(u_target) = u_target;
     }
+    
   }
   return result;
 }
@@ -81,7 +87,9 @@ arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
 #pragma omp parallel for
   for(int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
-
+    if(ct_obs(u_target) == 0){
+      result(u_target) = u_target;
+    } else {
       bool foundsame = false;
       //Rcpp::Rcout << "u_target: " << u_target << endl;
       for(int k=0; k<j; k++){ //blocks.n_elem; k++){
@@ -108,7 +116,7 @@ arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
       if(!foundsame){
         result(u_target) = u_target;
       }
-    
+    }
   }
   return result;
 }
@@ -146,33 +154,35 @@ arma::vec caching_pairwise_compare_uci(const arma::mat& coords,
 #pragma omp parallel for
   for(int j=0; j<indexing.n_elem; j++){
     int u_target = names(j)-1;
-    
-    bool foundsame = false;
-    //Rcpp::Rcout << "u_target: " << u_target << endl;
-    for(int k=0; k<j; k++){ //blocks.n_elem; k++){
-      int u_prop = names(k)-1;
-      // predicting blocks match anything, others only match themselves
-      
-      // both predicting or both observed
-      // or prop is observed
-      if( ( (ct_obs(u_prop) == 0) == (ct_obs(u_target) == 0) ) +
-          (ct_obs(u_prop) > 0)
-      ){ 
-        if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
-          // these are knots so designed, no risk of making mistakes based on tolerance here
-          // unless there are knots closer than 1e-4 apart which should be considered different!
-          bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
-          if(same){
-            result(u_target) = u_prop;
-            foundsame = true;
-            break;
-          }
-        }
-      } 
-    }
-    if(!foundsame){
+    if(ct_obs(u_target) == 0){
       result(u_target) = u_target;
+    } else {
+      bool foundsame = false;
+      //Rcpp::Rcout << "u_target: " << u_target << endl;
+      for(int k=0; k<j; k++){ //blocks.n_elem; k++){
+        int u_prop = names(k)-1;
+        // predicting blocks match anything, others only match themselves
+        
+        // both predicting or both observed
+        // or prop is observed
+        if( ( (ct_obs(u_prop) == 0) == (ct_obs(u_target) == 0) ) +
+            (ct_obs(u_prop) > 0)
+        ){ 
+          if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
+            bool same = arma::approx_equal(sorted(u_target), sorted(u_prop), "absdiff", 1e-4);
+            if(same){
+              result(u_target) = u_prop;
+              foundsame = true;
+              break;
+            }
+          }
+        } 
+      }
+      if(!foundsame){
+        result(u_target) = u_target;
+      }
     }
+    
     
   }
   return result;

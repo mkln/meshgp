@@ -83,6 +83,8 @@ public:
   
   // regression
   arma::mat XtX;
+  arma::mat Sigma_chol_Bcoeff;
+  
   arma::mat Vi; 
   arma::mat Vim;
   arma::vec bprim;
@@ -370,6 +372,11 @@ MeshGPdev::MeshGPdev(
   Vi    = beta_Vi_in;//.00001 * arma::eye(p,p);
   bprim = arma::zeros(p);
   Vim   = Vi * bprim;
+  
+  arma::mat Si_chol = arma::chol(arma::symmatu(//tausq_inv * 
+    XtX + Vi), "lower"); 
+  Sigma_chol_Bcoeff = arma::inv(arma::trimatl(Si_chol));
+  
   
   // priors for tausq and sigmasq
   sigmasq_ab = sigmasq_ab_in;
@@ -1053,13 +1060,10 @@ void MeshGPdev::gibbs_sample_beta(){
   message("[gibbs_sample_beta]");
   start = std::chrono::steady_clock::now();
   
-  arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv * XtX + Vi), "lower"); 
-  arma::mat Sigma_chol_Bcoeff = arma::inv(arma::trimatl(Si_chol));
-  
-  arma::mat Xprecy = Vim + tausq_inv * X_available.t() * ( y_available - Zw.rows(na_ix_all));// + ywmeandiff );
+  arma::mat Xprecy = Vim + //tausq_inv * 
+    X_available.t() * ( y_available - Zw.rows(na_ix_all));// + ywmeandiff );
   Rcpp::RNGScope scope;
-  Bcoeff = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy + arma::randn(p));
-  //Bcoeff = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy);// + arma::randn(p));
+  Bcoeff = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy + pow(tausq_inv, -.5) * arma::randn(p));
   
   if(verbose){
     end = std::chrono::steady_clock::now();
@@ -1076,7 +1080,8 @@ void MeshGPdev::gibbs_sample_tausq(){
   arma::vec XB_availab = X_available * Bcoeff;
   arma::vec Zw_availab = Zw.rows(na_ix_all);
   
-  arma::mat yrr = y_available - XB_availab - Zw_availab;
+  arma::mat yrr = y_available - XB_availab - 
+    Zw_availab;
   double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
   double aparam = tausq_ab(0) + n/2.0;
   double bparam = 1.0/( tausq_ab(1) + .5 * bcore );

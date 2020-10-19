@@ -91,13 +91,13 @@ public:
   void print_summary(int time_tick, int time_mcmc, int m, int mcmc);
   
   MHAdapter(){};
-  MHAdapter(int npars, int mcmc, const arma::mat& metropolis_sd);
+  MHAdapter(int npars, int mcmc, const arma::mat& metropolis_sd, double accept_target);
 };
 
-inline MHAdapter::MHAdapter(int npars, int mcmc, const arma::mat& metropolis_sd){
+inline MHAdapter::MHAdapter(int npars, int mcmc, const arma::mat& metropolis_sd, double accept_target=.234){
   
   EPS = 0.1;
-  tau_accept = 0.234;
+  tau_accept = accept_target;
   g_exp = .01;
   g0 = 500;
   rho_max = 2;

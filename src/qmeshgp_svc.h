@@ -705,8 +705,8 @@ void MeshGPsvc::init_cache(){
       kr_pairing(u) = arma::zeros(arma::size(parents_indexing(u)));//arma::zeros(arma::size(parents_coords(u))); // no parents
     }
   }
-  //kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
-  kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names);
+  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  //kr_caching_ix = caching_pairwise_compare_u(kr_pairing, block_names, block_ct_obs);
   kr_caching = arma::unique(kr_caching_ix);
   
   Rcpp::Rcout << "." << endl;
@@ -736,7 +736,7 @@ void MeshGPsvc::init_cache(){
       }
     }
     //gibbs_caching_ix = caching_pairwise_compare_uc(gibbs_pairing, block_names, block_ct_obs);
-    gibbs_caching_ix = caching_pairwise_compare_u(gibbs_pairing, block_names);
+    gibbs_caching_ix = caching_pairwise_compare_u(gibbs_pairing, block_names, block_ct_obs);
     gibbs_caching = arma::unique(gibbs_caching_ix);
   } else {
     gibbs_caching = arma::zeros(0);
@@ -1160,7 +1160,8 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
     int u = coords_caching(i); // layer name of ith representative
     //bool calc_this_block = predicting == false? (block_ct_obs(u) > 0) : predicting;
     //if(calc_this_block){
-    if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+    //if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
+    if(block_ct_obs(u) > 0){
       //uhm ++;
       //K_coords_cache(i) = Kpp(coords_blocks(u), coords_blocks(u), Kparam, true);
       xCovHUV_inplace(K_coords_cache(i), coords, indexing(u), indexing(u), cparams, Dmat, true);
@@ -1220,7 +1221,6 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   //if(arma::all(data.track_chol_fails == 0)){
   //  data.cholfail = false;
     
-  //Rcpp::Rcout << "here." << endl;
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
@@ -1228,6 +1228,8 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       int r = reference_blocks(i);
       int u = block_names(r)-1;
 
+      //if(block_ct_obs(u) > 0){
+        
       //if(compute_block(predicting, block_ct_obs(u), false)){
         int u_cached_ix = coords_caching_ix(u);
         arma::uvec cx = arma::find( coords_caching == u_cached_ix );
@@ -1273,6 +1275,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
           data.loglik_w_comps(u) = //block_ct_obs(u)//
             (q*indexing(u).n_elem+.0) 
             * hl2pi -.5 * data.wcore(u);
+      //}
           /*
         } else {
           Rcpp::Rcout << "you should not read this " << endl;

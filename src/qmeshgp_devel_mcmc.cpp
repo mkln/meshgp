@@ -153,7 +153,7 @@ Rcpp::List qmeshgp_dev_mcmc(
   // adaptive params
   int mcmc = mcmc_thin*mcmc_keep + mcmc_burn;
   
-  MHAdapter adaptivemc(param.n_elem, mcmc, mcmcsd);
+  MHAdapter adaptivemc(param.n_elem, mcmc, mcmcsd, .5);
   
   int msaved = 0;
   bool interrupted = false;
