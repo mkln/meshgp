@@ -3,7 +3,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                    num_threads = 7,
                    settings    = list(adapting=T, mcmcsd=.3, cache=T, cache_gibbs=F, 
                                       reference_full_coverage=F, verbose=F, debug=F, 
-                                      printall=F, saving=T),
+                                      printall=F, saving=T, matern_twonu=1),
                    prior       = list(set_unif_bounds=NULL,
                                       beta=NULL,
                                       sigmasq=NULL,
@@ -56,6 +56,13 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     q              <- ncol(Z)
     k              <- q * (q-1)/2
     nr             <- nrow(X)
+    
+    if(!is.null(settings$matern_twonu)){
+      matern_twonu <- settings$matern_twonu
+    } else {
+      matern_twonu <- 1
+    }
+    
     
     if(length(Mv) == 1){
       Mv <- rep(Mv, dd)
@@ -193,7 +200,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     }
     
     if(is.null(prior$sigmasq)){
-      sigmasq_ab <- c(2.01, 1)
+      sigmasq_ab <- c(3, 3)
     } else {
       sigmasq_ab <- prior$sigmasq
     }
@@ -218,7 +225,7 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     }
     
     if(is.null(starting$sigmasq)){
-      start_sigmasq <- 10
+      start_sigmasq <- 1
     } else {
       start_sigmasq  <- starting$sigmasq
     }
@@ -376,6 +383,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                               start_tausq,
                               start_sigmasq,
                               
+                              matern_twonu,
+                              
                               mcmc_mh_sd,
                               
                               recover,
@@ -395,22 +404,8 @@ meshgp <- function(y, X, Z, coords, axis_partition,
                               sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w) 
     })
     
-    list2env(results, environment())
     return(list(coords    = coords,
-                sort_ix      = sort_ix,
-                
-                beta_mcmc    = beta_mcmc,
-                tausq_mcmc   = tausq_mcmc,
-                sigmasq_mcmc = sigmasq_mcmc,
-                theta_mcmc   = theta_mcmc,
-                
-                w_mcmc    = w_mcmc,
-                yhat_mcmc = yhat_mcmc,
-      
-                runtime_all   = comp_time,
-                runtime_mcmc  = mcmc_time,
-                
-                recover   = recover
-                ))
+                sort_ix      = sort_ix) %>% c(results)
+                )
 }
 

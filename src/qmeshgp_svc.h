@@ -1,5 +1,8 @@
 #include "includes.h"
 
+#include <RcppEigen.h>
+#include <Eigen/CholmodSupport>
+
 // with indexing
 // without block extensions (obs with NA are left in)
 
@@ -36,6 +39,8 @@ public:
   arma::mat Z_available;
   
   arma::mat coords;
+  
+  int twonu;
   
   // block membership
   arma::uvec blocking;
@@ -145,6 +150,7 @@ public:
   void get_loglik_comps_w(MeshData& data);
   void get_cond_comps_loglik_w(MeshData& data);
   void get_cond_comps_loglik_w_nocache(MeshData& data);
+  void get_loglik_comps_y_collapsed(MeshData& data);
   
   void gibbs_sample_w();
   void gibbs_sample_w_omp();
@@ -195,6 +201,8 @@ public:
     const arma::vec& theta_in,
     double tausq_inv_in,
     double sigmasq_in,
+    
+    int twonu_in,
     
     const arma::mat& beta_Vi_in,
     const arma::vec& sigmasq_ab_in,
@@ -248,6 +256,8 @@ MeshGPsvc::MeshGPsvc(
   const arma::vec& theta_in,
   double tausq_inv_in,
   double sigmasq_in,
+  
+  int twonu_in,
   
   const arma::mat& beta_Vi_in,
   const arma::vec& sigmasq_ab_in,
@@ -335,6 +345,8 @@ MeshGPsvc::MeshGPsvc(
   Bcoeff           = beta_in;
   w                = w_in;
   Zw = armarowsum(Z % w);
+  
+  twonu = twonu_in;
   
   predicting = true;
   rfc_dep    = use_rfc;
@@ -960,13 +972,396 @@ void MeshGPsvc::get_loglik_w(MeshData& data){
   //print_data(data);
 }
 
+Eigen::VectorXd armavec_to_vectorxd(arma::vec arma_A) {
+  
+  Eigen::VectorXd eigen_B = Eigen::Map<Eigen::VectorXd>(arma_A.memptr(),
+                                                        arma_A.n_elem);
+  return eigen_B;
+}
+
+void expand_grid_with_values_(arma::umat& locs,
+                              arma::vec& vals,
+                              int rowstart, int rowend,
+                              const arma::uvec& x1,
+                              const arma::uvec& x2,
+                              const arma::mat& values){
+  
+  for(int i=rowstart; i<rowend; i++){
+    arma::uvec ix;
+    try {
+      ix = arma::ind2sub(arma::size(values), i-rowstart);
+    } catch (...) {
+      Rcpp::Rcout << arma::size(values) << " " << i-rowstart << " " << i <<" " << rowstart << " " << rowend << endl;
+      throw 1;
+    }
+    locs(0, i) = x1(ix(0));
+    locs(1, i) = x2(ix(1));
+    vals(i) = values(ix(0), ix(1));
+  }
+}
+
+void MeshGPsvc::get_loglik_comps_y_collapsed(MeshData& data){
+  // this is slow.
+  // caching to build the precision matrix is possible but
+  // cholmod takes about half the time
+  // and it's out of our control
+  
+  start_overall = std::chrono::steady_clock::now();
+  message("[get_loglik_comps_y_collapsed] start.");
+  
+  tausq_inv = data.theta(0);
+  cparams = data.theta.subvec(1, data.theta.n_elem-1);
+  Dmat = arma::zeros(0);
+  
+  arma::vec timings = arma::zeros(6);
+  
+  start = std::chrono::steady_clock::now();
+  arma::uvec Adims = arma::zeros<arma::uvec>(n_blocks+1);
+  arma::uvec Ddims = arma::zeros<arma::uvec>(n_blocks+1);
+  
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i)-1;
+    if(parents(u).n_elem > 0){
+      Adims(i+1) = indexing(u).n_elem * parents_indexing(u).n_elem;
+    }
+    Ddims(i+1) = indexing(u).n_elem * indexing(u).n_elem;
+  }
+  
+  int Asize = arma::accu(Adims);
+  Adims = arma::cumsum(Adims);
+  
+  arma::umat Hlocs = arma::zeros<arma::umat>(2, Asize);
+  arma::vec Hvals = arma::zeros(Asize);
+  
+  int Dsize = arma::accu(Ddims);
+  Ddims = arma::cumsum(Ddims);
+  
+  arma::umat Dlocs2 = arma::zeros<arma::umat>(2, Dsize);
+  arma::vec Dvals2 = arma::zeros(Dsize);
+  
+  //arma::field<arma::mat> K_coords_cache(coords_caching.n_elem);
+  //arma::field<arma::mat> K_parents_cache(parents_caching.n_elem);
+  arma::field<arma::mat> K_cholcp_cache(kr_caching.n_elem);
+  arma::field<arma::mat> w_cond_mean_cache(kr_caching.n_elem); // +++++++++
+  //arma::field<arma::mat> Kcp_cache(kr_caching.n_elem);
+  
+  for(int i=0; i<coords_caching.n_elem; i++){
+    int u = coords_caching(i);
+    if(block_ct_obs(u) > 0){
+      xCovHUV_inplace(K_coords_cache(i), coords, indexing(u), indexing(u), cparams, Dmat, true, twonu);
+    }
+  }
+  
+  data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int i=0; i<kr_caching.n_elem; i++){
+    int u = kr_caching(i);
+    if(block_ct_obs(u) > 0){//compute_block(predicting, block_ct_obs(u), false)){s
+      int u_cached_ix = coords_caching_ix(u);
+      arma::uvec cx = arma::find( coords_caching == u_cached_ix );
+      arma::mat Kcc = K_coords_cache(cx(0));
+      
+      // +++++++++++++++++
+      arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
+      xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true, twonu);
+      arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(arma::symmatu( Kxx ), "lower")));
+
+      xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
+      
+      // +++++++++++++++++
+      arma::mat Kcx_Kxxic = Kcp_cache(i) * Kxxi_c.t();
+      w_cond_mean_cache(i) = Kcx_Kxxic * Kxxi_c;
+      // +++++++++++++++++
+      
+      try {
+        arma::mat Kinside = Kcc - Kcx_Kxxic*Kcx_Kxxic.t();
+        K_cholcp_cache(i) = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
+          Kinside
+        ) , "lower")));
+        if(!Kinside.is_symmetric()){
+          data.track_chol_fails(u) = 2;
+          Rcpp::Rcout << "Error - Kinside not symmetric for some reason " << endl;
+        }
+      } catch (...) {
+        data.track_chol_fails(u) = 3;
+        K_cholcp_cache(i) = arma::eye(arma::size(Kcc));
+        Rcpp::Rcout << "Error in inv chol symmatu (Kcc - Kcx Kxx Kxc) at " << u << endl;
+      }
+      //Rcpp::Rcout << "krig: " << arma::size(K_cholcp_cache(i)) << "\n";
+    }
+  }
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int i = 0; i<n_ref_blocks; i++){
+    int r = reference_blocks(i);
+    int u = block_names(r)-1;
+    
+    int u_cached_ix = coords_caching_ix(u);
+    arma::uvec cx = arma::find( coords_caching == u_cached_ix );
+    arma::mat Kcc = K_coords_cache(cx(0));
+    
+    arma::mat cond_mean_K, cond_mean, cond_cholprec;//, w_parents;
+    
+    if( parents(u).n_elem > 0 ){
+      int kr_cached_ix = kr_caching_ix(u);
+      arma::uvec cpx = arma::find(kr_caching == kr_cached_ix);
+      
+      //arma::mat Kcx = Kcp_cache(cpx(0));//Kpp(coords_blocks(u), parents_coords(u), theta);
+      cond_mean_K = w_cond_mean_cache(cpx(0));// Kcx * Kxxi; // +++++++++++
+      cond_cholprec = K_cholcp_cache(cpx(0));
+      
+      data.w_cond_mean_K(u) = cond_mean_K;
+      data.w_cond_prec(u) = cond_cholprec.t() * cond_cholprec;
+      /*
+      expand_grid_with_values_(Hlocs, Hvals, Adims(i), Adims(i+1),
+                               indexing(u), parents_indexing(u), cond_mean_K);
+      
+      expand_grid_with_values_(Dlocs2, Dvals2, Ddims(i), Ddims(i+1),
+                               indexing(u), indexing(u), data.w_cond_prec(u));
+      */
+    } else {
+      //Rcpp::Rcout << "no parents " << endl;
+      cond_mean_K = arma::zeros(arma::size(parents(u)));
+      cond_cholprec = arma::inv(arma::trimatl(arma::chol( Kcc , "lower")));
+      data.w_cond_prec(u) = cond_cholprec.t() * cond_cholprec;
+      
+      /*
+      expand_grid_with_values_(Dlocs2, Dvals2, Ddims(i), Ddims(i+1),
+                               indexing(u), indexing(u), data.w_cond_prec(u));
+      */
+    }
+    
+    //if(block_ct_obs(u) > 0){
+    arma::vec ccholprecdiag = cond_cholprec.diag();//(na_ix_blocks(u), na_ix_blocks(u));
+    data.logdetCi_comps(u) = arma::accu(log(ccholprecdiag));//(na_ix_blocks(u))));
+  }
+
+  double ldetCi = arma::accu(data.logdetCi_comps);
+  double ldettsqi = n * log(tausq_inv);
+  end = std::chrono::steady_clock::now();
+  timings(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+  // building the precision matrix directly:
+  
+  start = std::chrono::steady_clock::now();
+  arma::field<arma::umat> blockrow_tripls(n_blocks);
+  arma::field<arma::mat> blockrow_vals(n_blocks);
+  
+#pragma omp parallel for
+  for(int i=0; i<n_blocks; i++){
+    int ui = block_names(i) - 1;
+    blockrow_tripls(i) = arma::zeros<arma::umat>(0, 2);
+    blockrow_vals(i) = arma::zeros(0, 1);
+    
+    for(int j=i; j<n_blocks; j++){
+      // compute the upper triangular part of the precision matrix
+      // col block name
+      int uj = block_names(j) - 1;
+      
+      arma::mat Ci_block;
+      
+      if(ui == uj){
+        // block diagonal part
+        Ci_block = data.w_cond_prec(ui);
+        
+        for(int c=0; c<children(ui).n_elem; c++){
+          int child = children(ui)(c);
+          arma::mat AK_u = data.w_cond_mean_K(child).cols(u_is_which_col_f(ui)(c)(0));
+          Ci_block += AK_u.t() * data.w_cond_prec(child) * AK_u;
+        }
+        
+        // locations to fill: indexing(ui) x indexing(uj) 
+        arma::umat tripl_locs(indexing(ui).n_elem * indexing(uj).n_elem, 2);
+        arma::mat tripl_val = arma::zeros(Ci_block.n_elem);
+        
+        for(int ix=0; ix<indexing(ui).n_elem; ix++){
+          for(int jx=0; jx<indexing(uj).n_elem; jx++){
+            int vecix = arma::sub2ind(arma::size(indexing(ui).n_elem, indexing(uj).n_elem), ix, jx);
+            tripl_locs(vecix, 0) = indexing(ui)(ix);
+            tripl_locs(vecix, 1) = indexing(uj)(jx);
+            tripl_val(vecix, 0) = Ci_block(ix, jx);
+          }
+        }
+        
+        //Rcpp::Rcout << ui << endl;
+        //Rcpp::Rcout << arma::size(blockrow_tripls(i)) << " " << arma::size(tripl_locs) << endl;
+        blockrow_tripls(i) = arma::join_vert(blockrow_tripls(i), tripl_locs);
+        //Rcpp::Rcout << arma::size(blockrow_vals(i)) << " " << arma::size(tripl_val) << endl;
+        blockrow_vals(i) = arma::join_vert(blockrow_vals(i), tripl_val);
+        //Rcpp::Rcout << "- " << endl;
+        
+      } else {
+        bool nonempty=false;
+        
+        // is there anything between these two? 
+        // they are either:
+        // 1: ui is parent of uj 
+        // 2: ui is child of uj <-- we're going by row so this should not be important?
+        // 3: ui and uj have common child
+        arma::uvec oneuv = arma::ones<arma::uvec>(1);
+        
+        arma::uvec ui_is_ujs_parent = arma::find(children(ui) == uj);
+        //Rcpp::Rcout << parents(uj) << endl;
+        if(ui_is_ujs_parent.n_elem > 0){
+          nonempty = true;
+          
+          // ui is a parent of uj
+          int c = ui_is_ujs_parent(0); // ui is uj's c-th parent
+          //Rcpp::Rcout << " loc 5 b " << c << " " << arma::size(param_data.w_cond_mean_K(uj)) << endl;
+          //Rcpp::Rcout << u_is_which_col_f(ui) << endl;
+          arma::mat AK_u = data.w_cond_mean_K(uj).cols(u_is_which_col_f(ui)(c)(0));
+          //Rcpp::Rcout << " loc 5 c " << endl;
+          Ci_block = - AK_u.t() * data.w_cond_prec(uj);
+        } else {
+          // common children? in this case we can only have one common child
+          arma::uvec commons = arma::intersect(children(uj), children(ui));
+          if(commons.n_elem > 0){
+            nonempty = true;
+            
+            int child = commons(0);
+            arma::uvec find_ci = arma::find(children(ui) == child);
+            int ci = find_ci(0);
+            arma::uvec find_cj = arma::find(children(uj) == child);
+            int cj = find_cj(0);
+            arma::mat AK_ui = data.w_cond_mean_K(child).cols(u_is_which_col_f(ui)(ci)(0));
+            arma::mat AK_uj = data.w_cond_mean_K(child).cols(u_is_which_col_f(uj)(cj)(0));
+            Ci_block = AK_ui.t() * data.w_cond_prec(child) * AK_uj;
+          }
+        }
+        
+        if(nonempty){
+          // locations to fill: indexing(ui) x indexing(uj) and the transposed lower block-triangular part
+          arma::umat tripl_locs1(indexing(ui).n_elem * indexing(uj).n_elem, 2);
+          arma::mat tripl_val1 = arma::vectorise(Ci_block);
+          
+          for(int jx=0; jx<indexing(uj).n_elem; jx++){
+            for(int ix=0; ix<indexing(ui).n_elem; ix++){
+              int vecix = arma::sub2ind(arma::size(indexing(ui).n_elem, indexing(uj).n_elem), ix, jx);
+              tripl_locs1(vecix, 0) = indexing(ui)(ix);
+              tripl_locs1(vecix, 1) = indexing(uj)(jx);
+            }
+          }
+          
+          blockrow_tripls(i) = arma::join_vert(blockrow_tripls(i), tripl_locs1);
+          blockrow_vals(i) = arma::join_vert(blockrow_vals(i), tripl_val1);
+          
+          arma::umat tripl_locs2(indexing(ui).n_elem * indexing(uj).n_elem, 2);
+          arma::mat tripl_val2 = arma::vectorise(arma::trans(Ci_block));
+          
+          for(int jx=0; jx<indexing(uj).n_elem; jx++){
+            for(int ix=0; ix<indexing(ui).n_elem; ix++){
+              int vecix = arma::sub2ind(arma::size(indexing(uj).n_elem, indexing(ui).n_elem), jx, ix);
+              tripl_locs2(vecix, 0) = indexing(uj)(jx);
+              tripl_locs2(vecix, 1) = indexing(ui)(ix);
+            }
+          }
+          
+          blockrow_tripls(i) = arma::join_vert(blockrow_tripls(i), tripl_locs2);
+          blockrow_vals(i) = arma::join_vert(blockrow_vals(i), tripl_val2);
+        }
+      }
+      
+    }
+  }
+  
+  //Rcpp::Rcout << "concatenating " << endl;
+  arma::umat Cilocs = field_v_concatm(blockrow_tripls);
+  arma::vec Civals = field_v_concatm(blockrow_vals);
+  
+  //Rcpp::Rcout << "triplets " << endl;
+  typedef Eigen::Triplet<double> T;
+  std::vector<T> tripletList_Ci;
+  tripletList_Ci.reserve(Cilocs.n_rows);
+  for(int i=0; i<Cilocs.n_rows; i++){
+    tripletList_Ci.push_back(T(Cilocs(i, 0), Cilocs(i, 1), Civals(i)));
+  }
+  
+  //Rcpp::Rcout << "gen sparse mat " << endl;
+  Eigen::SparseMatrix<double> Ci(n,n);
+  Ci.setFromTriplets(tripletList_Ci.begin(), tripletList_Ci.end());
+  end = std::chrono::steady_clock::now();
+  timings(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
+  Eigen::SparseMatrix<double> I_eig(n, n);
+  I_eig.setIdentity();
+  
+  /*
+   // EIGEN build via matrix multiply - slower
+   
+  std::vector<T> tripletList_H;
+  std::vector<T> tripletList_Dic2;
+  
+  start = std::chrono::steady_clock::now();
+   //Rcpp::Rcout << "Step 4 " << endl;
+  
+  tripletList_H.reserve(Hlocs.n_cols);
+  for(int i=0; i<Hlocs.n_cols; i++){
+    tripletList_H.push_back(T(Hlocs(0, i), Hlocs(1, i), Hvals(i)));
+  }
+  Eigen::SparseMatrix<double> He(n,n);
+  He.setFromTriplets(tripletList_H.begin(), tripletList_H.end());
+  
+  //Rcpp::Rcout << "Step 5 " << endl;
+  tripletList_Dic2.reserve(Dlocs2.n_cols);
+  for(int i=0; i<Dlocs2.n_cols; i++){
+    tripletList_Dic2.push_back(T(Dlocs2(0, i), Dlocs2(1, i), Dvals2(i)));
+  }
+  Eigen::SparseMatrix<double> Dice2(n,n);
+  Dice2.setFromTriplets(tripletList_Dic2.begin(), tripletList_Dic2.end());
+  
+  end = std::chrono::steady_clock::now();
+  timings(1) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+  start = std::chrono::steady_clock::now();
+  //Rcpp::Rcout << "Step 6 " << endl;
+  Eigen::SparseMatrix<double> L = (I_eig-He).triangularView<Eigen::Lower>().transpose();
+  end = std::chrono::steady_clock::now();
+  timings(2) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
+  start = std::chrono::steady_clock::now();
+  Eigen::SparseMatrix<double> Ci = (L * Dice2 * L.transpose());
+  end = std::chrono::steady_clock::now();
+  timings(3) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  */
+      
+  start = std::chrono::steady_clock::now();
+  Eigen::SparseMatrix<double> Ci_tausqi = Ci + tausq_inv * I_eig;
+  end = std::chrono::steady_clock::now();
+  timings(4) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
+  start = std::chrono::steady_clock::now();
+  Eigen::CholmodDecomposition<Eigen::SparseMatrix<double> > solver;
+  solver.compute(Ci_tausqi);
+  double ldetCitsqi = solver.logDeterminant();
+  
+  Eigen::VectorXd ye = armavec_to_vectorxd(y);
+  double logdet_overall = -ldetCitsqi + ldetCi + ldettsqi;
+  
+  double ycore1 = -.5 * tausq_inv * ye.transpose() * ye;
+  double ycore2 = .5 * tausq_inv * tausq_inv * ye.transpose() * solver.solve(ye);
+  data.loglik_w = logdet_overall + ycore1 + ycore2;
+  
+  end = std::chrono::steady_clock::now();
+  timings(5) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
+  if(verbose & debug || true){
+    end_overall = std::chrono::steady_clock::now();
+    double timer_all = std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count();
+    Rcpp::Rcout << timings.t() << endl;
+  }
+}
+
 void MeshGPsvc::get_loglik_comps_w(MeshData& data){
   if(cached){
     get_cond_comps_loglik_w(data);
   } else {
     get_cond_comps_loglik_w_nocache(data);
   }
-  //print_data(data);
 }
 
 /*
@@ -1164,7 +1559,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
     if(block_ct_obs(u) > 0){
       //uhm ++;
       //K_coords_cache(i) = Kpp(coords_blocks(u), coords_blocks(u), Kparam, true);
-      xCovHUV_inplace(K_coords_cache(i), coords, indexing(u), indexing(u), cparams, Dmat, true);
+      xCovHUV_inplace(K_coords_cache(i), coords, indexing(u), indexing(u), cparams, Dmat, true, twonu);
     }
   }
 
@@ -1182,7 +1577,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       
       // +++++++++++++++++
       arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
-      xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true);
+      xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true, twonu);
       arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(arma::symmatu( Kxx ), "lower")));
       /*
       double nanxi = arma::accu(Kxxi_c);
@@ -1193,7 +1588,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       }*/
       // +++++++++++++++++
       
-      xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat);
+      xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
       
       // +++++++++++++++++
       arma::mat Kcx_Kxxic = Kcp_cache(i) * Kxxi_c.t();
@@ -1292,25 +1687,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
     }
     data.logdetCi = arma::accu(data.logdetCi_comps);
     data.loglik_w = data.logdetCi + arma::accu(data.loglik_w_comps);
-    /*
-  } else {
-    data.cholfail = true;
-    Rcpp::Rcout << "Failure: " << endl;
-    arma::uvec fail1 = arma::find(data.track_chol_fails == 1);
-    Rcpp::Rcout << fail1.t() << endl;
-    Rcpp::Rcout << "^ ^ some u for which there has been a failure of type 1 (inverting chol C_[j][j]) ^ ^" << endl;
-    
-    arma::uvec fail2 = arma::find(data.track_chol_fails == 2);
-    Rcpp::Rcout << fail2.t() << endl;
-    Rcpp::Rcout << "^ ^ some u for which there has been a failure of type 2 (Rj not symmetric) ^ ^" << endl;
-    
-    arma::uvec fail3 = arma::find(data.track_chol_fails == 3);
-    Rcpp::Rcout << fail3.t() << endl;
-    Rcpp::Rcout << "^ ^ some u for which there has been a failure of type 3 (inverting chol Rj) ^ ^" << endl;
-    
-    Rcpp::Rcout << cparams.t() << endl << Dmat << endl;
-    throw 1;
-  }*/
+
   
   if(verbose){
     end = std::chrono::steady_clock::now();
@@ -1339,12 +1716,12 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
     if(block_ct_obs(u) > 0){
       // skip calculating stuff for blocks in the predict-only area 
       // when it's not prediction time
-      arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), cparams, Dmat, true);
+      arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), cparams, Dmat, true, twonu);
       arma::mat cond_mean_K, cond_mean, cond_cholprec;
       
       if( parents(u).n_elem > 0 ){
         arma::mat Kxxi = arma::inv_sympd(  xCovHUV(coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true) );
-        arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), cparams, Dmat);
+        arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
         cond_mean_K = Kcx * Kxxi;
         try {
           cond_cholprec = arma::inv(arma::trimatl(arma::chol( arma::symmatu(Kcc - cond_mean_K * Kcx.t()) , "lower")));
@@ -1624,7 +2001,6 @@ void MeshGPsvc::gibbs_sample_w_omp(){
   
 }
 
-
 void MeshGPsvc::gibbs_sample_w_omp_nocache(){
   if(verbose & debug){
     Rcpp::Rcout << "[gibbs_sample_w_omp_nocache] " << endl;
@@ -1739,9 +2115,9 @@ void MeshGPsvc::predict(){
       
       // only predictions at this block. 
       // sample from conditional MVN 
-      arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), cparams, Dmat, true);
-      arma::mat Kxxi = arma::inv_sympd( xCovHUV(coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true) );
-      arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), cparams, Dmat, false);
+      arma::mat Kcc = xCovHUV(coords, indexing(u), indexing(u), cparams, Dmat, true, twonu);
+      arma::mat Kxxi = arma::inv_sympd( xCovHUV(coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true, twonu) );
+      arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
         
         //Rcpp::Rcout << "? 1 " << endl;
       param_data.w_cond_mean_K(u) = Kcx * Kxxi;

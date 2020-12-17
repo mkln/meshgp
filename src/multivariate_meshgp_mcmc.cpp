@@ -1,10 +1,10 @@
-#include "qmeshgp_mv.h"
+#include "multivariate_meshgp.h"
 #include "interrupt_handler.h"
 #include "mgp_utils.h"
 
 
 //[[Rcpp::export]]
-Rcpp::List qmeshgp_mv_mcmc(
+Rcpp::List multivariate_mgp_mcmc(
     const arma::vec& y, 
     const arma::mat& X, 
     
@@ -19,7 +19,9 @@ Rcpp::List qmeshgp_mv_mcmc(
     const arma::vec& layer_names,
     const arma::vec& layer_gibbs_group,
     
+    
     const arma::field<arma::uvec>& indexing,
+    const arma::field<arma::uvec>& indexing_obs,
     
     const arma::mat& set_unif_bounds_in,
     const arma::mat& beta_Vi,
@@ -42,7 +44,7 @@ Rcpp::List qmeshgp_mv_mcmc(
     
     bool adapting=false,
     bool cache=false,
-    bool cache_gibbs=false,
+    bool forced_grid=true,
     
     bool verbose=false,
     bool debug=false,
@@ -54,7 +56,8 @@ Rcpp::List qmeshgp_mv_mcmc(
     bool sample_theta=true,
     bool sample_w=true){
   
-  Rcpp::Rcout << "Preparing for MCMC." << endl;
+  Rcpp::Rcout << "preparing." << endl;
+  
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
 #endif
@@ -71,7 +74,7 @@ Rcpp::List qmeshgp_mv_mcmc(
   
   bool verbose_mcmc = printall;
   
-  double tempr = 1;
+  double tempr = 1.0;
   
   int n = coords.n_rows;
   int d = coords.n_cols;
@@ -79,91 +82,48 @@ Rcpp::List qmeshgp_mv_mcmc(
   arma::uvec mv_id_uniques = arma::unique(mv_id);
   int q  = mv_id_uniques.n_elem;//Z.n_cols;
 
-  int k;
-  int npars;
-  double dlim=0;
-  Rcpp::Rcout << "d=" << d << " q=" << q << ".\n";
-  //Rcpp::Rcout << "Lower and upper bounds for priors:\n";
+  arma::mat set_unif_bounds = set_unif_bounds_in;//.rows(arma::zeros<arma::uvec>(1));//arma::join_vert(set_unif_bounds_in, tsqi_unif_bounds);
   
-  if(d == 2){
-    if(q == 1){
-      npars = 2; //##
-    } else {
-      int n_cbase = q > 2? 3: 1;
-      npars = 3*q + n_cbase; //##
-    }
-  } else {
-    Rcpp::Rcout << "d>2 not implemented for multivariate outcomes, yet " << endl;
-    throw 1;
+  if(verbose){
+    Rcpp::Rcout << "Limits to MCMC search for theta:\n";
+    Rcpp::Rcout << set_unif_bounds << endl;
   }
   
-  k = q * (q-1)/2;
+  arma::mat metropolis_sd = mcmcsd;
   
-  Rcpp::Rcout << "Number of pars: " << npars << " plus " << k << " for multivariate\n"; 
-  npars += k; // for xCovHUV + Dmat for variables (excludes sigmasq)
-  
-  /*
-  if(set_unif_bounds.n_rows < npars){
-    arma::mat vbounds = arma::zeros(k, 2);
-    if(npars > 1+5){
-      // multivariate
-      dlim = sqrt(q+.0);
-      vbounds.col(0) += 1e-5;
-      vbounds.col(1) += dlim - 1e-5;
-    } else {
-      vbounds.col(0) += 1e-5;
-      vbounds.col(1) += set_unif_bounds(0, 1);//.fill(arma::datum::inf);
-    }
-    set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
-  }*/
-  // metropolis search limits
-  //arma::mat tsqi_unif_bounds = arma::zeros(q, 2);
-  //tsqi_unif_bounds.col(0).fill(1e-5);
-  //tsqi_unif_bounds.col(1).fill(1000-1e-5);
-  //arma::mat set_unif_bounds = set_unif_bounds_in;
-  arma::mat set_unif_bounds = set_unif_bounds_in;//.rows(arma::zeros<arma::uvec>(1));//arma::join_vert(set_unif_bounds_in, tsqi_unif_bounds);
-  Rcpp::Rcout << set_unif_bounds << endl;
-  arma::mat metropolis_sd = arma::zeros(set_unif_bounds.n_rows, set_unif_bounds.n_rows);
-  metropolis_sd.submat(0, 0, npars-1, npars-1) = mcmcsd.submat(0, 0, npars-1, npars-1);
-  //metropolis_sd.submat(npars, npars, npars+q-1, npars+q-1) = .1 * arma::eye(q, q);
-  
-  
-  MeshGPmv mesh(y, X, coords, mv_id, blocking,
+  MultivariateMeshGP mesh(y, X, coords, mv_id, blocking,
                 
                 parents, children, layer_names, layer_gibbs_group,
-                indexing,
+                
+                indexing, indexing_obs,
                 
                 start_w, beta, sigmasq, theta, 1.0/tausq, 
                 beta_Vi, tausq_ab,
                 
-                cache, cache_gibbs, 
+                cache, forced_grid, 
                 verbose, debug);
 
+  
+  arma::vec param = mesh.param_data.theta;
+  
   arma::cube b_mcmc = arma::zeros(X.n_cols, q, mcmc_keep);
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_keep);
-  
-  arma::vec sigmasq_mcmc = arma::zeros(mcmc_keep);
-  arma::mat theta_mcmc = arma::zeros(npars, mcmc_keep);
+  arma::mat theta_mcmc = arma::zeros(param.n_elem, mcmc_keep);
   arma::vec llsave = arma::zeros(mcmc_keep);
-  
+  arma::vec wllsave = arma::zeros(mcmc_keep);
   // field avoids limit in size of objects -- ideally this should be a cube
   arma::field<arma::mat> w_mcmc(mcmc_keep);
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
   for(int i=0; i<mcmc_keep; i++){
-    w_mcmc(i) = arma::zeros(mesh.w.n_rows, q);
+    w_mcmc(i) = arma::zeros(mesh.w.n_rows, 1);
     yhat_mcmc(i) = arma::zeros(mesh.y.n_rows, 1);
   }
   
-  mesh.get_loglik_comps_w( mesh.param_data );
-  mesh.get_loglik_comps_w( mesh.alter_data );
-  /*if(sample_w){
-    mesh.gibbs_sample_w(true);
-    mesh.predict(true);
-    mesh.get_loglik_w(mesh.param_data);
-  }*/
-  
-  arma::vec param = mesh.param_data.theta;
+  bool acceptable = false;
+  acceptable = mesh.get_loglik_comps_w( mesh.param_data );
+  acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
+
   double current_loglik = tempr*mesh.param_data.loglik_w;
   if(verbose & debug){
     Rcpp::Rcout << "starting from ll: " << current_loglik << endl; 
@@ -171,19 +131,11 @@ Rcpp::List qmeshgp_mv_mcmc(
   
   double logaccept;
   
-  /*
-  double propos_count = 0;
-  double accept_count = 0;
-  double accept_ratio = 0;
-  double propos_count_local = 0;
-  double accept_count_local = 0;
-  double accept_ratio_local = 0;
-  */
-  
   // adaptive params
   int mcmc = mcmc_thin*mcmc_keep + mcmc_burn;
   
-  MHAdapter adaptivemc(param.n_elem, mcmc, metropolis_sd);
+  RAMAdapt adaptivemc(param.n_elem, //mcmc, 
+                      metropolis_sd);
   
   int msaved = 0;
   bool interrupted = false;
@@ -205,7 +157,7 @@ Rcpp::List qmeshgp_mv_mcmc(
   start_all = std::chrono::steady_clock::now();
   int m=0; int mx=0; int num_chol_fails=0;
   try { 
-    for(m=0; m<mcmc; m++){
+    for(m=0; m<mcmc & !interrupted; m++){
       
       mesh.predicting = false;
       mx = m-mcmc_burn;
@@ -218,52 +170,8 @@ Rcpp::List qmeshgp_mv_mcmc(
       if(printall){
         tick_mcmc = std::chrono::steady_clock::now();
       }
-      ll_upd_msg = current_loglik;
       
-      if(sample_w){
-        start = std::chrono::steady_clock::now();
-        mesh.gibbs_sample_w(needs_update || true);
-        mesh.get_loglik_w(mesh.param_data);
-        current_loglik = tempr*mesh.param_data.loglik_w;
-        
-        if(mesh.predicting){
-          bool predict_update = arma::approx_equal(predict_theta, mesh.param_data.theta, "absdiff", 1e-8);
-          mesh.predict(!predict_update);
-          predict_theta = mesh.param_data.theta;
-        }
-        end = std::chrono::steady_clock::now();
-        if(verbose_mcmc & sample_w & verbose){
-          Rcpp::Rcout << "[w] "
-                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. "; 
-          if(verbose || debug){
-            Rcpp::Rcout << endl;
-          }
-          //mesh.get_loglik_w(mesh.param_data);
-          //Rcpp::Rcout << " >>>> CHECK : " << mesh.param_data.loglik_w << endl;
-        }
-      }
-      
-      
-      if(sample_sigmasq || false){
-        start = std::chrono::steady_clock::now();
-        mesh.gibbs_sample_sigmasq();
-        current_loglik = tempr*mesh.param_data.loglik_w;
-        
-        //Rcpp::Rcout << "loglik: " << current_loglik << "\n";
-        mesh.get_loglik_comps_w( mesh.param_data );
-        //current_loglik = mesh.param_data.loglik_w;
-        //Rcpp::Rcout << "recalc: " << mesh.param_data.loglik_w << "\n";
-        end = std::chrono::steady_clock::now();
-        if(verbose_mcmc & sample_sigmasq & verbose){
-          Rcpp::Rcout << "[sigmasq] "
-                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. \n";
-          //Rcpp::Rcout << " >>>> CHECK from: " << mesh.param_data.loglik_w << endl;
-          //mesh.get_loglik_comps_w( mesh.param_data );
-          //Rcpp::Rcout << " >>>> CHECK with: " << mesh.param_data.loglik_w << endl;
-          //current_loglik = mesh.param_data.loglik_w;
-        }
-      }
-
+      // --------- METROPOLIS STEP ---------
       ll_upd_msg = current_loglik;
       start = std::chrono::steady_clock::now();
       if(sample_theta){
@@ -274,22 +182,27 @@ Rcpp::List qmeshgp_mv_mcmc(
         // theta
         Rcpp::RNGScope scope;
         arma::vec new_param = param;
-        
+        arma::vec U_update = arma::randn(param.n_elem);
         new_param = par_huvtransf_back(par_huvtransf_fwd(param, set_unif_bounds) + 
-          adaptivemc.paramsd * arma::randn(param.n_elem), set_unif_bounds);
+          adaptivemc.paramsd * U_update, set_unif_bounds);
 
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         arma::vec theta_proposal = new_param;
         
         mesh.theta_update(mesh.alter_data, theta_proposal);
-        mesh.get_loglik_comps_w( mesh.alter_data );
+        acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
+        
+        if(verbose & debug & printall){
+          Rcpp::Rcout << "new against old: " << mesh.alter_data.loglik_w - mesh.param_data.loglik_w 
+                      << " " << arma::trans(new_param-param) << endl;
+        }
         
         bool accepted = !out_unif_bounds;
         double new_loglik = 0;
         double prior_logratio = 0;
         double jacobian = 0;
         
-        if(!mesh.alter_data.cholfail){
+        if(acceptable){
           new_loglik = tempr*mesh.alter_data.loglik_w;
           current_loglik = tempr*mesh.param_data.loglik_w;
           
@@ -303,15 +216,7 @@ Rcpp::List qmeshgp_mv_mcmc(
           logaccept = new_loglik - current_loglik + //prior_logratio + 
             prior_logratio +
             jacobian;
-          /*
-          if(m == mcmc-1){
-            Rcpp::Rcout << "param: " << param.t() << endl;
-            Rcpp::Rcout << "new param: " << new_param.t() << endl;
-            Rcpp::Rcout << "logaccept: " << logaccept << endl;
-            Rcpp::Rcout << new_loglik << " vs " << current_loglik << endl;
-            Rcpp::Rcout << "jacobian: " << jacobian << endl;
-            Rcpp::Rcout << "prior: " << sigmasq_mhr << endl;
-          }*/
+
           if(std::isnan(logaccept)){
             Rcpp::Rcout << new_param.t() << endl;
             Rcpp::Rcout << param.t() << endl;
@@ -321,19 +226,17 @@ Rcpp::List qmeshgp_mv_mcmc(
           
           accepted = do_I_accept(logaccept);
           
-          //Rcpp::Rcout << "accepted? " << (accepted? "YES" : "NO") << endl;
-          //Rcpp::Rcout << "---- "<< endl;
-          
         } else {
           accepted = false;
           num_chol_fails ++;
-          printf("[warning] chol failure #%d at mh proposal -- auto rejected\n", num_chol_fails);
-          Rcpp::Rcout << new_param.t() << "\n";
+          if(verbose){
+            Rcpp::Rcout << "[warning] failure at mh proposal -- auto rejected" << endl;
+          }
         }
       
         if(accepted){
           std::chrono::steady_clock::time_point start_copy = std::chrono::steady_clock::now();
-          
+  
           adaptivemc.count_accepted();
           //accept_count++;
           //accept_count_local++;
@@ -342,37 +245,6 @@ Rcpp::List qmeshgp_mv_mcmc(
           mesh.accept_make_change();
           param = new_param;
           needs_update = true;
-          
-          if(sample_tausq & false){
-            start = std::chrono::steady_clock::now();
-            mesh.gibbs_sample_tausq();
-            end = std::chrono::steady_clock::now();
-            if(verbose_mcmc & sample_tausq & verbose){
-              Rcpp::Rcout << "[tausq] " 
-                          << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. " 
-                          << endl; 
-            }
-          }
-          if(sample_sigmasq & false){
-            start = std::chrono::steady_clock::now();
-            mesh.gibbs_sample_sigmasq();
-            current_loglik = tempr*mesh.param_data.loglik_w;
-            
-            //Rcpp::Rcout << "loglik: " << current_loglik << "\n";
-            mesh.get_loglik_comps_w( mesh.param_data );
-            //current_loglik = mesh.param_data.loglik_w;
-            //Rcpp::Rcout << "recalc: " << mesh.param_data.loglik_w << "\n";
-            end = std::chrono::steady_clock::now();
-            if(verbose_mcmc & sample_sigmasq & verbose){
-              Rcpp::Rcout << "[sigmasq] "
-                          << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. \n";
-              //Rcpp::Rcout << " >>>> CHECK from: " << mesh.param_data.loglik_w << endl;
-              //mesh.get_loglik_comps_w( mesh.param_data );
-              //Rcpp::Rcout << " >>>> CHECK with: " << mesh.param_data.loglik_w << endl;
-              //current_loglik = mesh.param_data.loglik_w;
-            }
-          }
-          
           
           std::chrono::steady_clock::time_point end_copy = std::chrono::steady_clock::now();
           if(verbose_mcmc & sample_theta & debug & verbose){
@@ -392,29 +264,10 @@ Rcpp::List qmeshgp_mv_mcmc(
         adaptivemc.update_ratios();
         
         if(adapting){
-          adaptivemc.adapt(par_huvtransf_fwd(param, set_unif_bounds), m); // **
+          //adaptivemc.adapt(par_huvtransf_fwd(param, set_unif_bounds), m); // **
+          adaptivemc.adapt(U_update, acceptable*exp(logaccept), m); // **
         }
         
-        if((m>0) & (mcmc > 100)){
-          if(!(m % (mcmc / 10))){
-            //Rcpp::Rcout << paramsd << endl;
-            //accept_count_local = 0;
-            //propos_count_local = 0;
-            
-            interrupted = checkInterrupt();
-            if(interrupted){
-              throw 1;
-            }
-            end_mcmc = std::chrono::steady_clock::now();
-            if(true){
-              int time_tick = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - tick_mcmc).count();
-              int time_mcmc = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - start_mcmc).count();
-              adaptivemc.print_summary(time_tick, time_mcmc, m, mcmc);
-              
-              tick_mcmc = std::chrono::steady_clock::now();
-            }
-          } 
-        }
       }
       end = std::chrono::steady_clock::now();
       if(verbose_mcmc & sample_theta & verbose){
@@ -422,6 +275,29 @@ Rcpp::List qmeshgp_mv_mcmc(
                     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. ";
         if(verbose || debug){
           Rcpp::Rcout << endl;
+        }
+      }
+      
+      // --------- GIBBS STEPS ---------
+      
+      if(sample_w){
+        start = std::chrono::steady_clock::now();
+        mesh.gibbs_sample_w();
+        //mesh.get_loglik_w(mesh.param_data);
+        //current_loglik = tempr*mesh.param_data.loglik_w;
+        
+        if(mesh.predicting){
+          bool predict_update = arma::approx_equal(predict_theta, mesh.param_data.theta, "absdiff", 1e-8);
+          mesh.predict(true);//(!predict_update);
+          predict_theta = mesh.param_data.theta;
+        }
+        end = std::chrono::steady_clock::now();
+        if(verbose_mcmc & sample_w & verbose){
+          Rcpp::Rcout << "[w] "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. "; 
+          if(verbose || debug){
+            Rcpp::Rcout << endl;
+          }
         }
       }
       
@@ -438,7 +314,7 @@ Rcpp::List qmeshgp_mv_mcmc(
         }
       }
       
-      if(sample_tausq & true){
+      if(sample_tausq){
         start = std::chrono::steady_clock::now();
         mesh.gibbs_sample_tausq();
         end = std::chrono::steady_clock::now();
@@ -447,45 +323,63 @@ Rcpp::List qmeshgp_mv_mcmc(
                       << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us. " 
                       << endl; 
         }
-        
+      }
+      
+      if(sample_tausq || sample_beta || sample_w){
+        mesh.logpost_refresh_after_gibbs();
       }
       
       if(printall){
         //Rcpp::checkUserInterrupt();
         interrupted = checkInterrupt();
-        if(interrupted){
-          throw 1;
-        }
-        
+        //if(interrupted){
+        //  throw 1;
+        //}
         int itertime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-tick_mcmc ).count();
         
         adaptivemc.print(itertime, m);
         
-        for(int pp=0; pp<npars; pp++){
-          printf("theta%1d=%.4f ", pp, mesh.param_data.theta(pp));
+        printf("[ %.2f : %.2f ] theta = ", mesh.param_data.loglik_w, mesh.logpost);
+        for(int pp=0; pp<mesh.param_data.theta.n_elem; pp++){
+          printf("%.3f ", mesh.param_data.theta(pp));
         }
         printf("\n");
         for(int pp=0; pp<q; pp++){
-          printf("tsq%1d=%.4f ", pp, 1.0/mesh.tausq_inv(pp));
+          printf(" tsq%1d = %.3f ", pp, 1.0/mesh.tausq_inv(pp));
         }
-        printf("~\n");
-        
-        tick_mcmc = std::chrono::steady_clock::now();
+        printf("\n");
       }
       
+      if((m>0) & (mcmc > 100)){
+        if(!(m % (mcmc / 10))){
+          interrupted = checkInterrupt();
+          if(interrupted){
+            throw 1;
+          }
+          end_mcmc = std::chrono::steady_clock::now();
+          if(true){
+            int time_tick = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - tick_mcmc).count();
+            int time_mcmc = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - start_mcmc).count();
+            adaptivemc.print_summary(time_tick, time_mcmc, m, mcmc);
+            
+            tick_mcmc = std::chrono::steady_clock::now();
+          }
+        } 
+      } else {
+        tick_mcmc = std::chrono::steady_clock::now();
+      }
       //save
       if(mx >= 0){
         if(mx % mcmc_thin == 0){
           tausq_mcmc.col(msaved) = 1.0 / mesh.tausq_inv;
           
           b_mcmc.slice(msaved) = mesh.Bcoeff;
-          sigmasq_mcmc(msaved) = mesh.sigmasq;
-          theta_mcmc.col(msaved) = mesh.param_data.theta;//arma::join_vert(mesh.sigmasq * arma::ones(1), mesh.param_data.theta);
-          llsave(msaved) = current_loglik;
-          
-          w_mcmc(msaved) = mesh.w;
+          theta_mcmc.col(msaved) = mesh.param_data.theta;
+          llsave(msaved) = mesh.logpost;
+          wllsave(msaved) = mesh.param_data.loglik_w;
+          w_mcmc(msaved) = mesh.w.col(0);
           Rcpp::RNGScope scope;
-          yhat_mcmc(msaved) = mesh.XB + mesh.w + pow(1.0/mesh.tausq_inv_long, .5) % arma::randn(n);
+          yhat_mcmc(msaved) = mesh.XB + mesh.w.col(0) + pow(1.0/mesh.tausq_inv_long, .5) % arma::randn(n);
           msaved++;
         }
       }
@@ -493,9 +387,7 @@ Rcpp::List qmeshgp_mv_mcmc(
     
     end_all = std::chrono::steady_clock::now();
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
-    Rcpp::Rcout << "MCMC done [" 
-                << mcmc_time
-                <<  "ms]" << endl;
+    Rcpp::Rcout << "MCMC done [" << mcmc_time <<  "ms]" << endl;
   
     
     return Rcpp::List::create(
@@ -503,12 +395,11 @@ Rcpp::List qmeshgp_mv_mcmc(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
-      Rcpp::Named("sigmasq_mcmc") = sigmasq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
-      Rcpp::Named("pix") = mesh.parents_indexing,
-      Rcpp::Named("paramsd") = adaptivemc.paramsd,
-      Rcpp::Named("ll") = llsave,
       Rcpp::Named("parents_indexing") = mesh.parents_indexing,
+      Rcpp::Named("paramsd") = adaptivemc.paramsd,
+      Rcpp::Named("logpost") = llsave,
+      Rcpp::Named("w_loglik") = wllsave,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0
     );
     
@@ -518,21 +409,19 @@ Rcpp::List qmeshgp_mv_mcmc(
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
     Rcpp::Rcout << "MCMC has been interrupted. Returning partial saved results if any." << endl;
     
-    if(msaved==0){
-      msaved=1;
-    }
-    
     return Rcpp::List::create(
       Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
-      Rcpp::Named("beta_mcmc") = b_mcmc.slices(0, msaved-1),
-      Rcpp::Named("tausq_mcmc") = tausq_mcmc.cols(0, msaved-1),
-      Rcpp::Named("theta_mcmc") = theta_mcmc.cols(0, msaved-1),
+      Rcpp::Named("beta_mcmc") = b_mcmc,
+      Rcpp::Named("tausq_mcmc") = tausq_mcmc,
+      Rcpp::Named("theta_mcmc") = theta_mcmc,
+      Rcpp::Named("parents_indexing") = mesh.parents_indexing,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
+      Rcpp::Named("logpost") = llsave,
+      Rcpp::Named("w_loglik") = wllsave,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0
     );
   }
-  
 }
 
 
@@ -576,13 +465,13 @@ arma::mat Kpred(const arma::vec& w_par,
   arma::mat Dmat;
   theta_transform(ai1, ai2, phi_i, thetamv, Dmat, theta, npars, dd, q);
   
-  arma::mat Kcc = mvCovAG20107_cx(coordsc, qv_blockc,
+  arma::mat Kcc = mvCovAG20107x(coordsc, qv_blockc,
                                   coordsc, qv_blockc,
                                   ai1, ai2, phi_i, thetamv, Dmat, true);
-  arma::mat Kxxi = arma::inv_sympd(mvCovAG20107_cx(coordsx, qv_blockx,
+  arma::mat Kxxi = arma::inv_sympd(mvCovAG20107x(coordsx, qv_blockx,
                                                    coordsx, qv_blockx,
                                                    ai1, ai2, phi_i, thetamv, Dmat, true));
-  arma::mat Kcx = mvCovAG20107_cx(coordsc, qv_blockc,
+  arma::mat Kcx = mvCovAG20107x(coordsc, qv_blockc,
                                   coordsx, qv_blockx,
                                   ai1, ai2, phi_i, thetamv, Dmat, false);
   
@@ -740,16 +629,16 @@ omp_set_num_threads(n_threads);
       theta_transform(ai1, ai2, phi_i, thetamv, Dmat, theta, npars, dd, pp);
       
       if(!arma::approx_equal(theta, theta_last, "abs_diff", 1e-6)){
-        Kxxi = arma::inv_sympd(mvCovAG20107_cx(block_par_coords, block_par_mvid,
+        Kxxi = arma::inv_sympd(mvCovAG20107x(block_par_coords, block_par_mvid,
                                                block_par_coords, block_par_mvid,
                                                ai1, ai2, phi_i, thetamv, Dmat, true));
         
-        Kcc = mvCovAG20107_cx(coordsc, block_mvid,
+        Kcc = mvCovAG20107x(coordsc, block_mvid,
                               coordsc, block_mvid,
                               ai1, ai2, phi_i, thetamv, Dmat, true);
         
         
-        Kcx = mvCovAG20107_cx(coordsc, block_mvid,
+        Kcx = mvCovAG20107x(coordsc, block_mvid,
                               block_par_coords, block_par_mvid,
                               ai1, ai2, phi_i, thetamv, Dmat, false);
         

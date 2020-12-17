@@ -38,11 +38,8 @@ struct MeshData {
 };
 
 struct MeshDataMV {
-  
-  double sigmasq;
   arma::vec theta; 
   
-  arma::vec wcore; 
   arma::field<arma::mat> w_cond_mean_K;
   arma::field<arma::mat> w_cond_cholprec;
   arma::field<arma::mat> w_cond_prec;
@@ -50,15 +47,18 @@ struct MeshDataMV {
   arma::vec logdetCi_comps;
   double logdetCi;
   
-  arma::vec loglik_w_comps;
-  double loglik_w;
+  arma::mat wcore; 
+  arma::mat loglik_w_comps;
   
-  arma::uvec track_chol_fails;
-  bool cholfail;
+  double loglik_w; // will be pml
+  double ll_y_all;
   
-  arma::field<arma::mat> Sigi_chol;
-  arma::field<arma::mat> Sigi_chol_cached;
+  arma::field<arma::mat> zH_obs; //***
+  arma::field<arma::vec> Ddiag; //***
+  arma::field<arma::mat> KcxKxxi_obs; // ***
+  
 };
+
 
 void print_data(const MeshData& data);
 
