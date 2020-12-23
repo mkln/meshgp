@@ -21,6 +21,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// xCovHUVc
+arma::mat xCovHUVc(const arma::mat& coords1, const arma::mat& coords2, const arma::vec& params, bool same, int twonu);
+RcppExport SEXP _meshgp_xCovHUVc(SEXP coords1SEXP, SEXP coords2SEXP, SEXP paramsSEXP, SEXP sameSEXP, SEXP twonuSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords1(coords1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords2(coords2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type params(paramsSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    Rcpp::traits::input_parameter< int >::type twonu(twonuSEXP);
+    rcpp_result_gen = Rcpp::wrap(xCovHUVc(coords1, coords2, params, same, twonu));
+    return rcpp_result_gen;
+END_RCPP
+}
 // vec_to_symmat
 arma::mat vec_to_symmat(const arma::vec& x);
 RcppExport SEXP _meshgp_vec_to_symmat(SEXP xSEXP) {
@@ -416,9 +431,32 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mesh_predict_by_block_base
+arma::field<arma::mat> mesh_predict_by_block_base(const arma::field<arma::mat>& newcoords, const arma::uvec& names, const arma::field<arma::mat>& w_mcmc, const arma::mat& theta_mcmc, const arma::vec& sigmasq_mcmc, const arma::vec& tausq_mcmc, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& parents_indexing, const arma::field<arma::uvec>& parents, const arma::mat& coords, int twonu, int n_threads);
+RcppExport SEXP _meshgp_mesh_predict_by_block_base(SEXP newcoordsSEXP, SEXP namesSEXP, SEXP w_mcmcSEXP, SEXP theta_mcmcSEXP, SEXP sigmasq_mcmcSEXP, SEXP tausq_mcmcSEXP, SEXP indexingSEXP, SEXP parents_indexingSEXP, SEXP parentsSEXP, SEXP coordsSEXP, SEXP twonuSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type newcoords(newcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type names(namesSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type w_mcmc(w_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type theta_mcmc(theta_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type sigmasq_mcmc(sigmasq_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tausq_mcmc(tausq_mcmcSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents_indexing(parents_indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< int >::type twonu(twonuSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(mesh_predict_by_block_base(newcoords, names, w_mcmc, theta_mcmc, sigmasq_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, twonu, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_caching_pairwise_compare_uci", (DL_FUNC) &_meshgp_caching_pairwise_compare_uci, 4},
+    {"_meshgp_xCovHUVc", (DL_FUNC) &_meshgp_xCovHUVc, 5},
     {"_meshgp_vec_to_symmat", (DL_FUNC) &_meshgp_vec_to_symmat, 1},
     {"_meshgp_xCovHUV_base", (DL_FUNC) &_meshgp_xCovHUV_base, 6},
     {"_meshgp_mvCovAG20107x", (DL_FUNC) &_meshgp_mvCovAG20107x, 10},
@@ -439,6 +477,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshgp_mvn", (DL_FUNC) &_meshgp_mvn, 3},
     {"_meshgp_qmeshgp_svc_mcmc", (DL_FUNC) &_meshgp_qmeshgp_svc_mcmc, 39},
     {"_meshgp_qmeshgp_collapsed_mcmc", (DL_FUNC) &_meshgp_qmeshgp_collapsed_mcmc, 39},
+    {"_meshgp_mesh_predict_by_block_base", (DL_FUNC) &_meshgp_mesh_predict_by_block_base, 12},
     {NULL, NULL, 0}
 };
 

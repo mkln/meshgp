@@ -171,21 +171,6 @@ Rcpp::List qmeshgp_svc_mcmc(
   Rcpp::Rcout << "Number of pars: " << npars << " plus " << k << " for multivariate\n"; 
   npars += k; // for xCovHUV + Dmat for variables (excludes sigmasq)
   
-  /*
-  if(set_unif_bounds.n_rows < npars){
-    arma::mat vbounds = arma::zeros(k, 2);
-    if(npars > 1+5){
-      // multivariate
-      dlim = sqrt(q+.0);
-      vbounds.col(0) += 1e-5;
-      vbounds.col(1) += dlim - 1e-5;
-    } else {
-      vbounds.col(0) += 1e-5;
-      vbounds.col(1) += set_unif_bounds(0, 1);//.fill(arma::datum::inf);
-    }
-    set_unif_bounds = arma::join_vert(set_unif_bounds, vbounds);
-  }*/
-  
   Rcpp::Rcout << set_unif_bounds << endl;
   
   MeshGPsvc mesh = MeshGPsvc();
@@ -916,17 +901,73 @@ Rcpp::List qmeshgp_collapsed_mcmc(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//[[Rcpp::export]]
+arma::field<arma::mat> mesh_predict_by_block_base(const arma::field<arma::mat>& newcoords,
+                                        const arma::uvec& names,
+                                        
+                                        const arma::field<arma::mat>& w_mcmc,
+                                        const arma::mat& theta_mcmc,
+                                        const arma::vec& sigmasq_mcmc,
+                                        const arma::vec& tausq_mcmc,
+                                        const arma::field<arma::uvec>& indexing,
+                                        const arma::field<arma::uvec>& parents_indexing,
+                                        const arma::field<arma::uvec>& parents,
+                                        const arma::mat& coords,
+                                        int twonu=1,
+                                        int n_threads = 10){
+#ifdef _OPENMP
+  omp_set_num_threads(n_threads);
+#endif
+  arma::uvec oneuv = arma::ones<arma::uvec>(1);
+  
+  int mcmc = w_mcmc.n_elem;
+  int n_blocks = newcoords.n_elem;
+  
+  arma::field<arma::mat> y_pred(n_blocks);
+  
+  Rcpp::Rcout << "Predictions " << endl;
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int j=0; j<n_blocks; j++){
+    int nout = newcoords(j).n_rows;
+    y_pred(j) = arma::zeros(nout, mcmc);
+    
+    int uref = names(j) - 1;
+    arma::uvec block_par_index = parents_indexing(uref);
+    
+    if(parents(uref).n_elem <= 2){
+      block_par_index = arma::join_vert(indexing(uref), block_par_index);
+    }
+    arma::mat block_par_coords = coords.rows(block_par_index);
+    
+    arma::mat Kxxi, Kcc, Kcx;
+    
+    arma::mat coordsc = newcoords(j);
+    
+    for(int m=0; m<mcmc; m++){
+      arma::vec cparams = arma::zeros(2);
+      cparams(0) = theta_mcmc(0, m);
+      cparams(1) = sigmasq_mcmc(m);
+      
+      arma::vec w_par = w_mcmc(m).rows(block_par_index);
+    
+      Kxxi = arma::inv_sympd(xCovHUVc(block_par_coords, block_par_coords, cparams, true, twonu));
+      Kcc = xCovHUVc(coordsc, coordsc, cparams, true, twonu);
+      Kcx = xCovHUVc(coordsc, block_par_coords, cparams, false, twonu);
+      
+      
+      arma::vec result = arma::zeros(coordsc.n_rows);
+      arma::vec rvec = arma::randn(coordsc.n_rows);
+      arma::vec w_pred_mean = Kcx * Kxxi * w_par;
+      arma::mat Rpred = Kcc - Kcx * Kxxi * Kcx.t();
+      arma::vec Rpred_sqrtdiag = sqrt(abs(Rpred.diag()));
+      
+      result = w_pred_mean + Rpred_sqrtdiag % rvec + sqrt(tausq_mcmc(m)) * arma::randn(coordsc.n_rows);
+      
+      y_pred(j).col(m) = result;
+    }
+  }
+  return y_pred;
+}

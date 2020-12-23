@@ -405,7 +405,51 @@ meshgp <- function(y, X, Z, coords, axis_partition,
     })
     
     return(list(coords    = coords,
+                blocking = blocking,
                 sort_ix      = sort_ix) %>% c(results)
                 )
 }
 
+
+mesh_predict_by_block <- function(meshout, newcoords, twonu=1, n_threads=10){
+  dd <- ncol(newcoords)
+  
+  sort_ix <- 1:nrow(newcoords)
+  
+  # for each predicting coordinate, find which block it belongs to
+  # (instead of using original partitioning (convoluted), 
+  # use NN since the main algorithm is adding coordinates in empty areas so NN will pick those up)
+  in_coords <- meshout$coords#$meshdata$data %>% dplyr::select(contains("Var"))
+  nn_of_preds <- in_coords %>% FNN::get.knnx(newcoords, k=1, algorithm="kd_tree") %$% nn.index
+  
+  block_ref <- meshout$blocking[nn_of_preds]
+  
+  ## by block (same block = same parents)
+  newcx_by_block     <- newcoords %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
+  
+  names_by_block     <- names(newcx_by_block) %>% as.numeric()
+  
+  sort_ix_by_block   <- sort_ix %>% split(block_ref)
+  
+  
+  y_predicted <- meshgp::mesh_predict_by_block_base(newcx_by_block, 
+                                         names_by_block,
+                                         meshout$w_mcmc,
+                                         meshout$theta_mcmc, 
+                                         meshout$sigmasq_mcmc,
+                                         meshout$tausq_mcmc,
+                                         meshout$recover$model_data$indexing,
+                                         meshout$recover$model_data$parents_indexing,
+                                         meshout$recover$model$parents,
+                                         meshout$coords, twonu, n_threads)
+  
+  sort_ix_result <- do.call(c, sort_ix_by_block)
+  coords_reconstruct <- do.call(rbind, newcx_by_block)
+  
+  coords_df <- cbind(coords_reconstruct, block_ref) %>% as.data.frame()
+  
+  y_preds <- do.call(rbind, y_predicted)
+  
+  return(list("coords_pred" = coords_df,
+              "y_pred" = y_preds))
+}

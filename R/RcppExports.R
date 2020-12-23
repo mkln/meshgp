@@ -5,6 +5,10 @@ caching_pairwise_compare_uci <- function(coords, indexing, names, ct_obs) {
     .Call(`_meshgp_caching_pairwise_compare_uci`, coords, indexing, names, ct_obs)
 }
 
+xCovHUVc <- function(coords1, coords2, params, same, twonu) {
+    .Call(`_meshgp_xCovHUVc`, coords1, coords2, params, same, twonu)
+}
+
 vec_to_symmat <- function(x) {
     .Call(`_meshgp_vec_to_symmat`, x)
 }
@@ -83,5 +87,9 @@ qmeshgp_svc_mcmc <- function(y, X, Z, coords, blocking, parents, children, layer
 
 qmeshgp_collapsed_mcmc <- function(y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, start_w, theta, beta, tausq, sigmasq, matern_twonu, mcmcsd, recover, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, num_threads = 1L, adapting = FALSE, cache = FALSE, cache_gibbs = FALSE, rfc = FALSE, verbose = FALSE, debug = FALSE, printall = FALSE, saving = TRUE, sample_beta = TRUE, sample_tausq = TRUE, sample_sigmasq = TRUE, sample_theta = TRUE, sample_w = TRUE) {
     .Call(`_meshgp_qmeshgp_collapsed_mcmc`, y, X, Z, coords, blocking, parents, children, layer_names, layer_gibbs_group, indexing, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, start_w, theta, beta, tausq, sigmasq, matern_twonu, mcmcsd, recover, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, cache, cache_gibbs, rfc, verbose, debug, printall, saving, sample_beta, sample_tausq, sample_sigmasq, sample_theta, sample_w)
+}
+
+mesh_predict_by_block_base <- function(newcoords, names, w_mcmc, theta_mcmc, sigmasq_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, twonu = 1L, n_threads = 10L) {
+    .Call(`_meshgp_mesh_predict_by_block_base`, newcoords, names, w_mcmc, theta_mcmc, sigmasq_mcmc, tausq_mcmc, indexing, parents_indexing, parents, coords, twonu, n_threads)
 }
 

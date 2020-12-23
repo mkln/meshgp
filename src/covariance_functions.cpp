@@ -300,6 +300,14 @@ void matern_halfint_inplace(arma::mat& res,
   //return res;
 }
 
+//[[Rcpp::export]]
+arma::mat xCovHUVc(const arma::mat& coords1, const arma::mat& coords2,
+                   const arma::vec& params, bool same, int twonu){
+  arma::mat res = arma::zeros(coords1.n_rows, coords2.n_rows);
+  // sigmasq, phi
+  matern_halfint_inplace(res, coords1, coords2, params(1), params(0), same, twonu);
+  return res;
+}
 
 
 void xCovHUV_inplace(arma::mat& res,

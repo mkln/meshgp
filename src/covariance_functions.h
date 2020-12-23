@@ -52,7 +52,8 @@ inline double sqrt_fpsi(const double& x, const double& a, const double& beta){
 arma::mat cexpcov(const arma::mat& x, const arma::mat& y, const double& sigmasq, const double& phi, bool same=false);
 
 
-
+arma::mat xCovHUVc(const arma::mat& coords1, const arma::mat& coords2,
+                   const arma::vec& params, bool same, int twonu);
 
 // Apanasovich & Genton 2010 
 // cross-covariances with same autocovariances 
