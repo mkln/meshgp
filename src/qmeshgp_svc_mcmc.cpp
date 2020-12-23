@@ -221,8 +221,9 @@ Rcpp::List qmeshgp_svc_mcmc(
     yhat_mcmc(i) = arma::zeros(mesh.y.n_rows, 1);
   }
   
-  mesh.get_loglik_comps_w( mesh.param_data );
-  mesh.get_loglik_comps_w( mesh.alter_data );
+  bool acceptable = true;
+  acceptable = mesh.get_loglik_comps_w( mesh.param_data );
+  acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
   /*if(sample_w){
     mesh.gibbs_sample_w();
     mesh.predict(true);
@@ -313,14 +314,14 @@ Rcpp::List qmeshgp_svc_mcmc(
         //mesh.alter_data.sigmasq = new_param(0);
         mesh.theta_update(mesh.alter_data, new_param); 
         
-        mesh.get_loglik_comps_w( mesh.alter_data );
+        acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
         
         bool accepted = !out_unif_bounds;
         double new_loglik = 0;
         double prior_logratio = 0;
         double jacobian = 0;
         
-        if(!mesh.alter_data.cholfail){
+        if(acceptable){
           new_loglik = tempr*mesh.alter_data.loglik_w;
           current_loglik = tempr*mesh.param_data.loglik_w;
           

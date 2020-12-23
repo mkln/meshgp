@@ -1,5 +1,7 @@
-#include "includes.h"
+#define ARMA_DONT_PRINT_ERRORS
 
+
+#include "includes.h"
 #include <RcppEigen.h>
 #include <Eigen/CholmodSupport>
 
@@ -147,9 +149,9 @@ public:
   
   // MCMC
   void get_loglik_w(MeshData& data);
-  void get_loglik_comps_w(MeshData& data);
-  void get_cond_comps_loglik_w(MeshData& data);
-  void get_cond_comps_loglik_w_nocache(MeshData& data);
+  bool get_loglik_comps_w(MeshData& data);
+  bool get_cond_comps_loglik_w(MeshData& data);
+  bool get_cond_comps_loglik_w_nocache(MeshData& data);
   void get_loglik_comps_y_collapsed(MeshData& data);
   
   void gibbs_sample_w();
@@ -1013,8 +1015,6 @@ void MeshGPsvc::get_loglik_comps_y_collapsed(MeshData& data){
   cparams = data.theta.subvec(1, data.theta.n_elem-1);
   Dmat = arma::zeros(0);
   
-  arma::vec timings = arma::zeros(6);
-  
   start = std::chrono::steady_clock::now();
   arma::uvec Adims = arma::zeros<arma::uvec>(n_blocks+1);
   arma::uvec Ddims = arma::zeros<arma::uvec>(n_blocks+1);
@@ -1144,7 +1144,7 @@ void MeshGPsvc::get_loglik_comps_y_collapsed(MeshData& data){
   double ldetCi = arma::accu(data.logdetCi_comps);
   double ldettsqi = n * log(tausq_inv);
   end = std::chrono::steady_clock::now();
-  timings(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  //timings(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
   // building the precision matrix directly:
   
@@ -1285,7 +1285,7 @@ void MeshGPsvc::get_loglik_comps_y_collapsed(MeshData& data){
   Eigen::SparseMatrix<double> Ci(n,n);
   Ci.setFromTriplets(tripletList_Ci.begin(), tripletList_Ci.end());
   end = std::chrono::steady_clock::now();
-  timings(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  //timings(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
   Eigen::SparseMatrix<double> I_eig(n, n);
   I_eig.setIdentity();
@@ -1332,7 +1332,7 @@ void MeshGPsvc::get_loglik_comps_y_collapsed(MeshData& data){
   start = std::chrono::steady_clock::now();
   Eigen::SparseMatrix<double> Ci_tausqi = Ci + tausq_inv * I_eig;
   end = std::chrono::steady_clock::now();
-  timings(4) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  //timings(4) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
   start = std::chrono::steady_clock::now();
   Eigen::CholmodDecomposition<Eigen::SparseMatrix<double> > solver;
@@ -1347,20 +1347,20 @@ void MeshGPsvc::get_loglik_comps_y_collapsed(MeshData& data){
   data.loglik_w = logdet_overall + ycore1 + ycore2;
   
   end = std::chrono::steady_clock::now();
-  timings(5) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  //timings(5) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
-  if(verbose & debug || true){
+  if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
     double timer_all = std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count();
-    Rcpp::Rcout << timings.t() << endl;
+    //Rcpp::Rcout << timings.t() << endl;
   }
 }
 
-void MeshGPsvc::get_loglik_comps_w(MeshData& data){
+bool MeshGPsvc::get_loglik_comps_w(MeshData& data){
   if(cached){
-    get_cond_comps_loglik_w(data);
+    return get_cond_comps_loglik_w(data);
   } else {
-    get_cond_comps_loglik_w_nocache(data);
+    return get_cond_comps_loglik_w_nocache(data);
   }
 }
 
@@ -1539,7 +1539,7 @@ void MeshGPsvc::theta_transform(const MeshData& data){
    //           << Dmat << endl;
 }
 
-void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
+bool MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
   start = std::chrono::steady_clock::now();
   message("[get_cond_comps_loglik_w] start.");
   
@@ -1562,56 +1562,58 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       xCovHUV_inplace(K_coords_cache(i), coords, indexing(u), indexing(u), cparams, Dmat, true, twonu);
     }
   }
-
+  
   data.track_chol_fails = arma::zeros<arma::uvec>(n_blocks);
+  int chol_error = -1;
   
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
-    if(block_ct_obs(u) > 0){//compute_block(predicting, block_ct_obs(u), false)){s
-      int u_cached_ix = coords_caching_ix(u);
-      arma::uvec cx = arma::find( coords_caching == u_cached_ix );
-      arma::mat Kcc = K_coords_cache(cx(0));
-      
-      // +++++++++++++++++
-      arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
-      xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true, twonu);
-      arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(arma::symmatu( Kxx ), "lower")));
-      /*
-      double nanxi = arma::accu(Kxxi_c);
-      if(std::isnan(nanxi)){
-        Rcpp::Rcout << data.sigmasq << endl;
-        Rcpp::Rcout << "Error in inv tri chol sym(Kxx) at " << u << endl;
-        data.track_chol_fails(u) = 1;
-      }*/
-      // +++++++++++++++++
-      
-      xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
-      
-      // +++++++++++++++++
-      arma::mat Kcx_Kxxic = Kcp_cache(i) * Kxxi_c.t();
-      w_cond_mean_cache(i) = Kcx_Kxxic * Kxxi_c;
-      // +++++++++++++++++
-      
-      try {
+    try {
+      if(block_ct_obs(u) > 0){
+        int u_cached_ix = coords_caching_ix(u);
+        arma::uvec cx = arma::find( coords_caching == u_cached_ix );
+        arma::mat Kcc = K_coords_cache(cx(0));
+        
+        // +++++++++++++++++
+        arma::mat Kxx = arma::zeros(q*parents_indexing(u).n_elem, q*parents_indexing(u).n_elem);
+        xCovHUV_inplace(Kxx, coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true, twonu);
+        arma::mat Kxxi_c = arma::inv(arma::trimatl(arma::chol(arma::symmatu( Kxx ), "lower")));
+        // +++++++++++++++++
+        
+        xCovHUV_inplace(Kcp_cache(i), coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
+        
+        // +++++++++++++++++
+        arma::mat Kcx_Kxxic = Kcp_cache(i) * Kxxi_c.t();
+        w_cond_mean_cache(i) = Kcx_Kxxic * Kxxi_c;
+        // +++++++++++++++++
+        
         arma::mat Kinside = Kcc - Kcx_Kxxic*Kcx_Kxxic.t();
         K_cholcp_cache(i) = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
           Kinside
         ) , "lower")));
-        if(!Kinside.is_symmetric()){
-          data.track_chol_fails(u) = 2;
-          Rcpp::Rcout << "Error - Kinside not symmetric for some reason " << endl;
-        }
-      } catch (...) {
-        data.track_chol_fails(u) = 3;
-        K_cholcp_cache(i) = arma::eye(arma::size(Kcc));
-        Rcpp::Rcout << "Error in inv chol symmatu (Kcc - Kcx Kxx Kxc) at " << u << endl;
+        //Rcpp::Rcout << "krig: " << arma::size(K_cholcp_cache(i)) << "\n";
       }
-      //Rcpp::Rcout << "krig: " << arma::size(K_cholcp_cache(i)) << "\n";
+    } catch (...) {
+      chol_error = 1;
     }
   }
+  
+  end = std::chrono::steady_clock::now();
+  //timing(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  if(chol_error > 0){
+    return false;
+  }
+  
+  if(verbose & debug){
+    
+    Rcpp::Rcout << "[cache] "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+                << "us.\n";
+  }
+  start = std::chrono::steady_clock::now();
   
   //if(arma::all(data.track_chol_fails == 0)){
   //  data.cholfail = false;
@@ -1623,9 +1625,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
       int r = reference_blocks(i);
       int u = block_names(r)-1;
 
-      //if(block_ct_obs(u) > 0){
-        
-      //if(compute_block(predicting, block_ct_obs(u), false)){
+      try {
         int u_cached_ix = coords_caching_ix(u);
         arma::uvec cx = arma::find( coords_caching == u_cached_ix );
         arma::mat Kcc = K_coords_cache(cx(0));
@@ -1644,7 +1644,7 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
           //arma::mat Kcx = Kcp_cache(cpx(0));//Kpp(coords_blocks(u), parents_coords(u), theta);
           cond_mean_K = w_cond_mean_cache(cpx(0));// Kcx * Kxxi; // +++++++++++
           cond_cholprec = K_cholcp_cache(cpx(0));//arma::inv(arma::trimatl(arma::chol( arma::symmatu(Kcc - cond_mean_K * Kcx.t()) , "lower")));
-        //Rcpp::Rcout << arma::size(cond_cholprec) << endl;
+          //Rcpp::Rcout << arma::size(cond_cholprec) << endl;
         } else {
           //Rcpp::Rcout << "no parents " << endl;
           cond_mean_K = arma::zeros(arma::size(parents(u)));
@@ -1656,55 +1656,51 @@ void MeshGPsvc::get_cond_comps_loglik_w(MeshData& data){
         data.w_cond_prec(u) = cond_cholprec.t() * cond_cholprec;
         
         //if(block_ct_obs(u) > 0){
-          arma::vec ccholprecdiag = cond_cholprec.diag();//(na_ix_blocks(u), na_ix_blocks(u));
-          data.logdetCi_comps(u) = arma::accu(log(ccholprecdiag));//(na_ix_blocks(u))));
-          
-          arma::vec w_x = arma::vectorise(arma::trans( w.rows(indexing(u)) ));
-          if(parents(u).n_elem > 0){
-            arma::vec w_pars = arma::vectorise(arma::trans( w.rows(parents_indexing(u)) ));
-            w_x -= data.w_cond_mean_K(u) * w_pars;
-          }
-          //w_x = w_x % na_1_blocks(u);
-          data.wcore(u) = arma::conv_to<double>::from(w_x.t() * data.w_cond_prec(u) * w_x);
-          //Rcpp::Rcout << "u: " << u << " wcore: " << data.wcore(u) << endl; 
-          data.loglik_w_comps(u) = //block_ct_obs(u)//
-            (q*indexing(u).n_elem+.0) 
-            * hl2pi -.5 * data.wcore(u);
-      //}
-          /*
-        } else {
-          Rcpp::Rcout << "you should not read this " << endl;
-          data.logdetCi_comps(u) = 0;
-          data.wcore(u) = 0;
-          data.loglik_w_comps(u) = 0;
-          //Rcpp::Rcout << "i: " << i << ", u: " << u << " ldCi " << logdetCi_comps(u) << endl;
-        }*/
-      /*} else {
-        data.logdetCi_comps(u) = 0;
-        data.wcore(u) = 0;
-        data.loglik_w_comps(u) = 0;
-      }*/
+        arma::vec ccholprecdiag = cond_cholprec.diag();//(na_ix_blocks(u), na_ix_blocks(u));
+        data.logdetCi_comps(u) = arma::accu(log(ccholprecdiag));//(na_ix_blocks(u))));
+        
+        arma::vec w_x = arma::vectorise(arma::trans( w.rows(indexing(u)) ));
+        if(parents(u).n_elem > 0){
+          arma::vec w_pars = arma::vectorise(arma::trans( w.rows(parents_indexing(u)) ));
+          w_x -= data.w_cond_mean_K(u) * w_pars;
+        }
+        //w_x = w_x % na_1_blocks(u);
+        data.wcore(u) = arma::conv_to<double>::from(w_x.t() * data.w_cond_prec(u) * w_x);
+        //Rcpp::Rcout << "u: " << u << " wcore: " << data.wcore(u) << endl; 
+        data.loglik_w_comps(u) = //block_ct_obs(u)//
+          (q*indexing(u).n_elem+.0) 
+          * hl2pi -.5 * data.wcore(u);
+      } catch(...) {
+        chol_error = 2;
+      }
     }
     data.logdetCi = arma::accu(data.logdetCi_comps);
     data.loglik_w = data.logdetCi + arma::accu(data.loglik_w_comps);
-
   
-  if(verbose){
-    end = std::chrono::steady_clock::now();
+  end = std::chrono::steady_clock::now();
+  //timing(1) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  if(chol_error > 0){
+    return false;
+  }
+
+  if(verbose & debug){
+    
     Rcpp::Rcout << "[get_cond_comps_chached_loglik_w] "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
                 << "us.\n";
   }
+  
+  return true;
 }
 
 
-void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
+bool MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
   start = std::chrono::steady_clock::now();
   message("[get_cond_comps_loglik_w_nocache] start. ");
   
   theta_transform(data);
 
-  int errtype=-1;
+  int chol_error=-1;
   
 #ifdef _OPENMP
 #pragma omp parallel for 
@@ -1720,13 +1716,14 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
       arma::mat cond_mean_K, cond_mean, cond_cholprec;
       
       if( parents(u).n_elem > 0 ){
-        arma::mat Kxxi = arma::inv_sympd(  xCovHUV(coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true) );
+        arma::mat Kxxi = arma::inv_sympd(  xCovHUV(coords, parents_indexing(u), parents_indexing(u), cparams, Dmat, true, twonu) );
         arma::mat Kcx = xCovHUV(coords, indexing(u), parents_indexing(u), cparams, Dmat, false, twonu);
         cond_mean_K = Kcx * Kxxi;
         try {
           cond_cholprec = arma::inv(arma::trimatl(arma::chol( arma::symmatu(Kcc - cond_mean_K * Kcx.t()) , "lower")));
         } catch (...) {
-          errtype=1;
+          chol_error = 1;
+          cond_cholprec = arma::zeros(arma::size(Kcc));
         }
         
       } else {
@@ -1734,7 +1731,8 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
         try {
           cond_cholprec = arma::inv(arma::trimatl(arma::chol( Kcc , "lower")));
         } catch (...) {
-          errtype=2;
+          chol_error = 2;
+          cond_cholprec = arma::zeros(arma::size(Kcc));
         }
       }
       
@@ -1763,10 +1761,11 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
       Rcpp::Rcout << "should not read this 2 " << endl;
     }
   }
-  if(errtype>0){
+  if(chol_error > 0){
     Rcpp::Rcout << "Error with Cholesky. Possibly change limits for MCMC search" << endl;
-    throw 1;
+    return false;
   }
+  
   data.logdetCi = arma::accu(data.logdetCi_comps.subvec(0, n_blocks-1));
   data.loglik_w = data.logdetCi + arma::accu(data.loglik_w_comps.subvec(0, n_blocks-1));
   
@@ -1776,6 +1775,8 @@ void MeshGPsvc::get_cond_comps_loglik_w_nocache(MeshData& data){
                 << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
                 << "us.\n";
   }
+  
+  return true;
 }
 
 void MeshGPsvc::gibbs_sample_beta(){
@@ -1920,12 +1921,10 @@ void MeshGPsvc::gibbs_sample_w_omp(){
         arma::mat AK_uP = AK_u.t() * param_data.w_cond_prec(child);
         Sigi_tot += AK_uP * AK_u;
       }
-      
       Sigi_tot += tausq_inv * Zblock(u).t() * Ib(u) * Zblock(u);
       Sigi_chol_cached(i) = arma::inv(arma::trimatl(arma::chol( arma::symmatu( Sigi_tot ), "lower")));
     }
   }
-  
   start_overall = std::chrono::steady_clock::now();
   
   for(int g=0; g<n_gibbs_groups-predict_group_exists; g++){
@@ -1938,8 +1937,6 @@ void MeshGPsvc::gibbs_sample_w_omp(){
       arma::mat Sigi_chol, Sigi_tot;
       //if(compute_block(predicting, block_ct_obs(u), rfc_dep)){
         arma::mat Smu_c, Smu_tot, Smu_y; //Sigi_p, 
-        
-        //Rcpp::Rcout << "gibbs_sample_w_omp loop step 1 - block " << u << "\n";
         
         int u_cached_ix = gibbs_caching_ix(u);
         arma::uvec gx = arma::find( gibbs_caching == u_cached_ix );
@@ -2010,6 +2007,10 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
   rand_norm_mat = arma::randn(coords.n_rows, q);
   //Rcpp::Rcout << rand_norm_mat.head_rows(10) << endl << " ? " << endl;
   
+  int counter = 0;
+  int crow = 0;
+  int ccol = 0;
+  
   start_overall = std::chrono::steady_clock::now();
   for(int g=0; g<n_gibbs_groups-predict_group_exists; g++){
     //int g = gibbs_groups_reorder(go);
@@ -2020,6 +2021,7 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
+          
           arma::mat Smu_tot = arma::zeros(q*indexing(u).n_elem, 1);
           arma::mat Sigi_tot = param_data.w_cond_prec(u); // Sigi_p
           
@@ -2056,6 +2058,10 @@ void MeshGPsvc::gibbs_sample_w_omp_nocache(){
           Sigi_tot += tausq_inv * Zblock(u).t() * Ib(u) * Zblock(u);
           Smu_tot += Zblock(u).t() * ((tausq_inv * na_1_blocks(u)) % 
             ( y.rows(indexing(u)) - X.rows(indexing(u)) * Bcoeff ));
+          
+          counter ++;
+          crow += Sigi_tot.n_rows;
+          ccol += Sigi_tot.n_cols;
           
           //start = std::chrono::steady_clock::now();
           arma::mat Sigi_chol = arma::inv(arma::trimatl(arma::chol( arma::symmatu( Sigi_tot ), "lower")));

@@ -244,9 +244,10 @@ double xCovHUV_base(const double& h, const double& u, const double& v,
 
 
 // matern covariance with nu = p + 1/2, and p=0,1,2
-arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
+void matern_halfint_inplace(arma::mat& res,
+    const arma::mat& x, const arma::mat& y, const double& phi, const double& sigmasq, bool same, int twonu){
   // 0 based indexing
-  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
+  //arma::mat res = arma::zeros(x.n_rows, y.n_rows);
   double nugginside = 0;//1e-7;
   if(same){
     for(int i=0; i<x.n_rows; i++){
@@ -256,18 +257,18 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
           if(twonu == 1){
-            res(i, j) = exp(-hphi);
+            res(i, j) = sigmasq * exp(-hphi);
           } else {
             if(twonu == 3){
-              res(i, j) = exp(-hphi) * (1 + hphi);
+              res(i, j) = sigmasq * exp(-hphi) * (1 + hphi);
             } else {
               if(twonu == 5){
-                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+                res(i, j) = sigmasq * (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
               }
             }
           }
         } else {
-          res(i, j) = 1.0 + nugginside;
+          res(i, j) = sigmasq + nugginside;
         }
       }
     }
@@ -280,23 +281,23 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
           if(twonu == 1){
-            res(i, j) = exp(-hphi);
+            res(i, j) = sigmasq * exp(-hphi);
           } else {
             if(twonu == 3){
-              res(i, j) = exp(-hphi) * (1 + hphi);
+              res(i, j) = sigmasq * exp(-hphi) * (1 + hphi);
             } else {
               if(twonu == 5){
-                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+                res(i, j) = sigmasq * (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
               }
             }
           }
         } else {
-          res(i, j) = 1.0 + nugginside;
+          res(i, j) = sigmasq + nugginside;
         }
       }
     }
   }
-  return res;
+  //return res;
 }
 
 
@@ -308,8 +309,7 @@ void xCovHUV_inplace(arma::mat& res,
   int d = coords.n_cols;
   int p = Dmat.n_cols;
   if((d == 2) & (p < 2)){
-    res = //1/params(1) * 
-      matern_halfint(coords.rows(ind1), coords.rows(ind2), params(1), same, twonu)*params(0);
+    matern_halfint_inplace(res, coords.rows(ind1), coords.rows(ind2), params(1), params(0), same, twonu);
       //cexpcov(coords.rows(ind1), coords.rows(ind2), params(0), params(1), same);
   } else {
     if(same){
